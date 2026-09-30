@@ -3,6 +3,7 @@
 import { Loader2, PlaneTakeoff } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { tituloPadrao } from "@/lib/format";
 import { CHAVES_IMPORT_SCDP, parseScdp } from "@/lib/scdp";
 
 function NovoInner() {
@@ -27,7 +28,8 @@ function NovoInner() {
         trecho,
       );
     const body: Record<string, unknown> = {
-      titulo: pcdp ? `RVN — PCDP ${pcdp}` : "Relatório sem título",
+      // O servidor também ajusta no POST; aqui já sai certo na tela.
+      titulo: tituloPadrao(importado.pcdpNumero ?? pcdp, importado.nome),
       pcdpNumero: importado.pcdpNumero ?? pcdp,
       eventoDescricao:
         importado.eventoDescricao || (trechoEhOutraSecao ? "" : trecho),

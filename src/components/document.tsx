@@ -207,10 +207,12 @@ export function RvnDocument({ draft }: { draft: ReportDraft }) {
       </header>
 
       {/* ===== Tabela única (19.512cm × grade de 15 colunas) ===== */}
+      {/* A grade (19,512cm do modelo) é distribuída em 100% da área útil:
+          a tabela não invade mais as margens — a sangria de 0,591cm era
+          cortada pela impressora e o texto da 1ª coluna saía mutilado. */}
       <table
         style={{
-          width: "calc(100% + 1.182cm)",
-          marginLeft: "-0.591cm",
+          width: "100%",
           borderCollapse: "collapse",
           tableLayout: "fixed",
         }}

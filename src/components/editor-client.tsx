@@ -247,7 +247,20 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
           body: json,
         });
         if (res.ok) {
-          lastSavedJson.current = json;
+          // O servidor pode trocar o título automático por
+          // "PCDP 013912/26 — NOME DO PROPOSTO": reflete na tela sem recarregar.
+          const salvo = (await res.json().catch(() => ({}))) as {
+            titulo?: string;
+          };
+          if (salvo.titulo && salvo.titulo !== d.titulo) {
+            lastSavedJson.current = JSON.stringify({
+              ...d,
+              titulo: salvo.titulo,
+            });
+            setDraft((atual) => ({ ...atual, titulo: salvo.titulo as string }));
+          } else {
+            lastSavedJson.current = json;
+          }
           setSaveState("saved");
         } else {
           setSaveState("dirty");

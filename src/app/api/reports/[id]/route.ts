@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { bilhetes, reports } from "@/db/schema";
+import { tituloAutomatico, tituloPadrao } from "@/lib/format";
 import { asc, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
@@ -87,6 +88,20 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const update: Record<string, string> = {};
   for (const key of CAMPOS_PERMITIDOS) {
     if (typeof body[key] === "string") update[key] = body[key] as string;
+  }
+
+  // Título automático no momento de salvar: "PCDP 013912/26 — NOME DO
+  // PROPOSTO" — vale para o padrão antigo ("RVN — PCDP …") e para quando a
+  // PCDP/nome chegam depois do relatório já criado.
+  const [atual] = await db.select().from(reports).where(eq(reports.id, numId));
+  if (atual) {
+    const titulo = update.titulo ?? atual.titulo;
+    if (tituloAutomatico(titulo)) {
+      update.titulo = tituloPadrao(
+        update.pcdpNumero ?? atual.pcdpNumero,
+        update.nome ?? atual.nome,
+      );
+    }
   }
 
   await db

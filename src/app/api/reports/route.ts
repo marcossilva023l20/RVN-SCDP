@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { bilhetes, profiles, reports } from "@/db/schema";
+import { tituloAutomatico, tituloPadrao } from "@/lib/format";
 import { cabecalhoPreenchido } from "@/lib/org";
 import { asc, desc, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
@@ -76,6 +77,15 @@ export async function POST(req: NextRequest) {
   ] as const;
   for (const key of permitidos) {
     if (typeof body[key] === "string" && body[key]) base[key] = body[key];
+  }
+
+  // Título automático: "PCDP 013912/26 — NOME DO PROPOSTO" (em vez do
+  // genérico "Relatório sem título"), quando a PCDP já é conhecida.
+  if (tituloAutomatico(String(base.titulo ?? ""))) {
+    base.titulo = tituloPadrao(
+      typeof base.pcdpNumero === "string" ? base.pcdpNumero : "",
+      typeof base.nome === "string" ? base.nome : "",
+    );
   }
 
   // Bilhetes vindos do pré-preenchimento (bookmarklet → /novo → POST)

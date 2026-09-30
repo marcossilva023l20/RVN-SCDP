@@ -229,3 +229,28 @@ export function valorPorExtenso(n: number): string {
 export function formatDateTimeBR(dateISO: string, time: string): string {
   return dataHoraCivil(dateISO, time);
 }
+
+/** Título automático do relatório: "PCDP 013912/26 — CELESTIMAR RIBEIRO DE ARAÚJO" */
+export function tituloPadrao(pcdpNumero?: string, nome?: string): string {
+  const pcdp = (pcdpNumero ?? "").trim();
+  const quem = (nome ?? "").trim();
+  if (pcdp && quem) return `PCDP ${pcdp} — ${quem}`;
+  if (pcdp) return `PCDP ${pcdp}`;
+  if (quem) return `RVN — ${quem}`;
+  return "Relatório sem título";
+}
+
+/**
+ * O título ainda é o automático? (vale para o padrão antigo "RVN — PCDP …",
+ * para "Relatório sem título" e para o padrão novo, que é regenerado quando
+ * o nome do proposto é preenchido depois).
+ */
+export function tituloAutomatico(titulo: string): boolean {
+  const t = (titulo ?? "").trim();
+  return (
+    !t ||
+    t === "Relatório sem título" ||
+    /^RVN\s*[—-]\s*PCDP/i.test(t) ||
+    /^PCDP\b/i.test(t)
+  );
+}
