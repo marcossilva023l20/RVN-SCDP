@@ -438,15 +438,29 @@ export function parseScdp(bruto: string): ScdpImport {
   // pelo trecho; sozinho, também cria as linhas.
   if (/C[óo]digo da Reserva/i.test(t)) {
     let plano = t;
+    // Rótulos das duas tabelas (do maior para o menor, para não sobrar
+    // pedaço de nome composto, ex.: "Companhia de Transporte" -> "de
+    // Transporte"). Sem isso, títulos como "BILHETES A PRESTAR CONTAS"
+    // competiam com o código da reserva na hora de escolher o token.
     for (const rotulo of [
+      "BILHETES A PRESTAR CONTAS",
+      "BILHETES DA PCDP",
+      "\\* Clique em um trecho para visualizar o hist[óo]rico do bilhete",
+      "Comprovação Automatizada",
+      "Companhia de Transporte",
+      "Data do Processamento",
+      "Número do Bilhete",
+      "Número do Voo",
+      "Cidade de Origem",
+      "Cidade de Destino",
       "Código da Reserva",
-      "Companhia",
       "Tarifa de Embarque",
-      "Tarifa",
-      "Tx. de Serviço",
       "Situação do Bilhete",
       "Agência de Viagem",
       "Situação do Trajeto",
+      "Tx. de Serviço",
+      "Tarifa",
+      "Companhia",
       "Origem",
       "Destino",
     ]) {
@@ -465,15 +479,40 @@ export function parseScdp(bruto: string): ScdpImport {
       const cabeca = plano.slice(fim, i);
       fim = i + m[0].length;
 
-      // Código da reserva: último token com letras E dígitos antes das
-      // tarifas (a companhia vem logo depois dele).
+      // Código da reserva: primeiro token em CAIXA ALTA/dígitos da linha,
+      // antes das tarifas. Pode ter só letras (GOL: "ETCQCR") ou letras e
+      // dígitos (Gontijo: "WVOZRN39"); o status ("Emitido") é ignorado.
+      const cabecaSemStatus = cabeca.replace(
+        /\b(?:[Ee]mitido|[Dd]evolvido|[Uu]tilizado|[Cc]ancelado|[Rr]eservado)\b/g,
+        " ",
+      );
+      // Candidato a reserva = token em CAIXA ALTA (com ao menos uma letra,
+      // nunca só número) que tem logo em seguida, antes da 1ª tarifa, apenas
+      // o nome da companhia. Assim o cabeçalho da página (nome, PCDP,
+      // rótulos) não é confundido com código de reserva.
+      const posTarifa = cabecaSemStatus.search(/R\$/);
+      const trechoReserva =
+        posTarifa >= 0 ? cabecaSemStatus.slice(0, posTarifa) : cabecaSemStatus;
+      const NAO_E_RESERVA =
+        /^(?:BILHETES?|PCDP|CONTAS|PRESTAR|RESERVA|COMPANHIA|TARIFA|TARIFAS|SITUA[ÇC][ÃA]O|ORIGEM|DESTINO|VIAGEM|TRAJETO|AG[ÊE]NCIA|DADOS|DETALHES|PROPOSTO|NOME|TIPO|PER[ÍI]ODO|DATA|SOLICITA[ÇC][ÃA]O|DESCRI[ÇC][ÃA]O|MOTIVO|DI[ÁA]RIAS|TOTALIZA|ROTEIRO|QUADRO)$/i;
       const mReserva = [
-        ...cabeca.matchAll(/\b(?=[A-Z0-9]*\d)(?=[A-Z0-9]*[A-Z])[A-Z0-9]{5,12}\b/g),
-      ].pop();
+        ...trechoReserva.matchAll(
+          /(?<![\p{L}\p{N}])(?=[A-Z0-9]*[A-Z])[A-Z0-9]{5,12}(?![\p{L}\p{N}])/gu,
+        ),
+      ].find((x) => {
+        if (NAO_E_RESERVA.test(x[0])) return false;
+        const entre = trechoReserva.slice((x.index ?? 0) + x[0].length).trim();
+        const palavras = entre.split(/\s+/).filter(Boolean);
+        return (
+          palavras.length <= 6 &&
+          /^[A-ZÀ-Þ]/.test(palavras[0] ?? "") &&
+          !palavras.some((w) => NAO_E_RESERVA.test(w))
+        );
+      });
       const reserva = mReserva?.[0] ?? "";
       let cia = "";
       if (mReserva?.index !== undefined) {
-        cia = cabeca.slice(mReserva.index + reserva.length).split(/R\$/)[0];
+        cia = trechoReserva.slice(mReserva.index + reserva.length);
       } else {
         const mCia = cabeca
           .split(/R\$/)[0]
@@ -483,6 +522,8 @@ export function parseScdp(bruto: string): ScdpImport {
         cia = mCia?.[1] ?? "";
       }
       cia = cia
+        // Selo/etiqueta da companhia na célula ("Aero", "Agenciamento"…)
+        .replace(/^\s*(?:Aero|Agenciamento|Rodovi[aá]rio)\b/i, " ")
         .replace(/\b(Sim|N[ãa]o)\b/gi, " ")
         .replace(/\b(?:emitido|devolvido|utilizado|cancelado)\b/gi, " ")
         .replace(/[|;]+/g, " ")
