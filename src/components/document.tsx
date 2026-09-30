@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { ReportDraft } from "@/lib/types";
 import type { CSSProperties, ReactNode } from "react";
 
@@ -5,7 +6,8 @@ import type { CSSProperties, ReactNode } from "react";
  * RÉPLICA FIEL do modelo oficial "RVN - Modelo.odt" (SCDP).
  *
  * Estrutura extraída do arquivo original:
- * - Cabeçalho: 5 linhas, Times New Roman 10pt, negrito, centralizadas;
+ * - Cabeçalho: brasão da República em preto e branco, centralizado (1,5cm);
+ *   5 linhas, Times New Roman 10pt, negrito, centralizadas;
  *   1 linha em branco (8pt); título "RELATÓRIO DE VIAGEM NACIONAL" 11pt negrito.
  * - Corpo: UMA única tabela de 15 colunas (larguras em cm da grade original),
  *   bordas 1.05pt pretas, padding lateral 0.123cm, alinhamento vertical médio.
@@ -174,7 +176,25 @@ export function RvnDocument({ draft }: { draft: ReportDraft }) {
       }}
     >
       {/* ===== Cabeçalho (fora da tabela) — 10pt negrito centralizado ===== */}
-      <header className="text-center" style={{ lineHeight: 1.2 }}>
+      <header
+        className="text-center"
+        style={{ lineHeight: 1.2, breakInside: "avoid" }}
+      >
+        <Image
+          src="/images/brasao-republica.png"
+          alt="Brasão da República Federativa do Brasil"
+          width={116}
+          height={116}
+          unoptimized
+          preload
+          style={{
+            display: "block",
+            width: "1.5cm",
+            height: "1.5cm",
+            objectFit: "contain",
+            margin: "0 auto 0.1cm",
+          }}
+        />
         {linhasCabecalho.map(
           (l, i) =>
             l && (
