@@ -122,7 +122,10 @@ export function DashboardClient({
 
   const bookmarklet = useMemo(() => {
     if (!origin) return "#";
-    const code = `(function(){var t=(window.getSelection?window.getSelection().toString():'')||'';var m=t.match(/\\d{4,7}\\s*\\/\\s*\\d{2,4}/);window.open('${origin}/novo?'+(m?('pcdp='+encodeURIComponent(m[0].replace(/\\s/g,''))):'')+'&t='+encodeURIComponent(t.slice(0,6000)),'_blank');})()`;
+    // O texto selecionado vai para o app pela URL (até 6.000 caracteres) e,
+    // quando a seleção é maior, a cópia completa fica na área de
+    // transferência — o editor tem o botão "Colar" para aproveitá-la.
+    const code = `(function(){var t=(window.getSelection?window.getSelection().toString():'')||'';var m=t.match(/\\d{4,7}\\s*\\/\\s*\\d{2,4}/);try{if(t&&navigator.clipboard)navigator.clipboard.writeText(t)}catch(e){}window.open('${origin}/novo?'+(m?('pcdp='+encodeURIComponent(m[0].replace(/\\s/g,''))):'')+'&t='+encodeURIComponent(t.slice(0,6000)),'_blank');})()`;
     return `javascript:${code}`;
   }, [origin]);
 

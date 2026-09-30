@@ -1,14 +1,18 @@
-import { RvnDocument } from "@/components/document";
 import { PrintBar } from "@/components/print-bar";
 import { db } from "@/db";
-import { bilhetes, reports } from "@/db/schema";
+import { reports } from "@/db/schema";
 import { nomeArquivoPdf } from "@/lib/format";
-import { reportToDraft } from "@/lib/types";
-import { asc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Impressão: mostra o PDF gerado pelo app (o mesmo do botão "Gerar PDF") no
+ * visualizador do navegador. Antes esta tela reimprimia a página HTML — o
+ * layout do papel ficava por conta do navegador; agora o documento impresso
+ * é exatamente o arquivo pronto.
+ */
 export default async function ImprimirPage({
   params,
 }: {
@@ -24,26 +28,16 @@ export default async function ImprimirPage({
     .where(eq(reports.id, numId));
   if (!report) notFound();
 
-  const rows = await db
-    .select()
-    .from(bilhetes)
-    .where(eq(bilhetes.reportId, numId))
-    .orderBy(asc(bilhetes.ordem), asc(bilhetes.id));
-
-  const draft = reportToDraft({ ...report, bilhetes: rows });
+  const nomeArquivo = nomeArquivoPdf(report.pcdpNumero, report.nome);
 
   return (
-    <div className="rvn-print-reset min-h-screen bg-paper-deep/60 py-24">
-      <PrintBar
-        id={numId}
-        draft={draft}
-        nomeArquivo={nomeArquivoPdf(draft.pcdpNumero, draft.nome)}
+    <div className="flex h-screen flex-col bg-paper-deep/60">
+      <PrintBar id={numId} nomeArquivo={nomeArquivo} />
+      <iframe
+        src={`/api/reports/${numId}/pdf`}
+        title={`Documento — ${nomeArquivo}`}
+        className="min-h-0 w-full flex-1 border-0 bg-white"
       />
-      <main className="rvn-print-reset px-4">
-        <div id="rvn-paper" className="rvn-paper mx-auto">
-          <RvnDocument draft={draft} />
-        </div>
-      </main>
     </div>
   );
 }
