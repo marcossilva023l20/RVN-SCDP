@@ -1,0 +1,56 @@
+name: Publicar em produção
+
+on:
+  push:
+    branches: ["arena/**"]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch a publicar (ex.: arena/01a0effb-rvn-scdp). Vazio = main."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publicar-producao
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    env:
+      ORIGEM: ${{ inputs.branch != '' && inputs.branch || github.ref }}
+      VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+    steps:
+      - name: Baixar o repositório (histórico completo)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.ORIGEM }}
+          fetch-depth: 0
+
+      - name: Levar o conteúdo para o main
+        run: |
+          set -euo pipefail
+          ORIGEM_SHA=$(git rev-parse HEAD)
+          git config user.name "publicacao-automatica"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B main origin/main
+          if [ "$(git rev-parse origin/main)" = "$ORIGEM_SHA" ]; then
+            echo "Nada novo: o main já está nesta versão."
+            exit 0
+          fi
+          if git merge-base --is-ancestor origin/main "$ORIGEM_SHA"; then
+            git merge --ff-only "$ORIGEM_SHA"
+          else
+            echo "::warning::o main andou por fora; integrando automaticamente"
+            git merge --no-edit "$ORIGEM_SHA"
+          fi
+          git push origin main
+          echo "publicado no main: $(git rev-parse --short HEAD)"
+
+      - name: Avisar a Vercel (só se o secret VERCEL_DEPLOY_HOOK existir)
+        if: env.VERCEL_DEPLOY_HOOK != ''
+        run: curl -sS -X POST "$VERCEL_DEPLOY_HOOK" -o /dev/null -w "deploy hook: HTTP %{http_code}\n"
