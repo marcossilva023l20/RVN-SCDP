@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const fmtData = (iso: string) =>
   new Intl.DateTimeFormat("pt-BR", {
@@ -125,6 +125,17 @@ export function DashboardClient({
     const code = `(function(){var t=(window.getSelection?window.getSelection().toString():'')||'';var m=t.match(/\\d{4,7}\\s*\\/\\s*\\d{2,4}/);window.open('${origin}/novo?'+(m?('pcdp='+encodeURIComponent(m[0].replace(/\\s/g,''))):'')+'&t='+encodeURIComponent(t.slice(0,300)),'_blank');})()`;
     return `javascript:${code}`;
   }, [origin]);
+
+  const bookmarkletRef = useRef<HTMLAnchorElement | null>(null);
+
+  // O React sanitiza href="javascript:..." passado via props (substitui por
+  // "javascript:throw new Error('React has blocked a javascript: URL...')"),
+  // o que inutilizava o favorito arrastado. Definir o href direto no DOM
+  // escapa do sanitizador e o botão volta a virar um bookmarklet de verdade.
+  useEffect(() => {
+    const a = bookmarkletRef.current;
+    if (a && bookmarklet !== "#") a.href = bookmarklet;
+  }, [bookmarklet]);
 
   const criar = async (exemplo = false) => {
     setCreating(true);
@@ -697,7 +708,8 @@ export function DashboardClient({
                   </p>
                   <div className="mt-3 flex items-center gap-2">
                     <a
-                      href={bookmarklet}
+                      ref={bookmarkletRef}
+                      href="#"
                       onClick={(e) => {
                         if (bookmarklet === "#") e.preventDefault();
                         else {
