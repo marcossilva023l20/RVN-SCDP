@@ -62,6 +62,10 @@ const est = StyleSheet.create({
   titulo: { fontWeight: "bold", fontSize: 11 },
   linha: { flexDirection: "row", flexWrap: "nowrap" },
   linhaComQuebra: { flexDirection: "row", flexWrap: "wrap" },
+  /** assinatura: encosta no pé da página (o margem automática consome a
+      sobra de espaço; se não houver sobra, a linha desce para a página
+      seguinte inteira, sem cortar o texto) */
+  linhaFlutuante: { marginTop: "auto" },
   celula: {
     borderTopWidth: BORDA,
     borderLeftWidth: BORDA,
@@ -101,17 +105,23 @@ function Linha({
   cells,
   quebra = false,
   base = false,
+  flutua = false,
 }: {
   cells: CelulaDef[];
   /** permite a linha atravessar páginas (textos longos) */
   quebra?: boolean;
   /** fecha a base da tabela (última linha do documento) */
   base?: boolean;
+  /** empurra a linha para o pé da página (assinatura) */
+  flutua?: boolean;
 }) {
   let offset = 0;
   const restantes = [...cells];
   return (
-    <View style={est.linha} wrap={!quebra}>
+    <View
+      style={flutua ? [est.linha, est.linhaFlutuante] : est.linha}
+      wrap={!quebra}
+    >
       {restantes.map((c, i) => {
         const w = largura(offset, c.span);
         offset += c.span;
@@ -504,16 +514,22 @@ export function RvnPdf({
           }
         />
 
-        {/* ===== Local/data e assinatura ===== */}
+        {/* ===== Local/data e assinatura =====
+            Bloco da assinatura: NÃO pode ser partido entre páginas (era daí
+            que o nome saía borrado/sobreposto na quebra, com a caixa
+            continuando vazia na página seguinte). `quebra` mantém a linha
+            inteira; o `marginTop` automático encosta o bloco no pé da
+            última página, como no modelo. */}
         <Linha
           base
+          quebra
+          flutua
           cells={[
             {
               span: 15,
               node: (
-                <View style={[est.centralizado, { paddingTop: 8, paddingBottom: 2 }]}>
+                <View style={[est.centralizado, { paddingTop: 3, paddingBottom: 3 }]}>
                   <Text style={est.texto}>{draft.localData || " "}</Text>
-                  <Text style={est.texto}> </Text>
                   <Text style={est.texto}> </Text>
                   <Text style={[est.texto, est.negrito]}>
                     {draft.assinatura ||
