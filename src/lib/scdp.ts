@@ -212,9 +212,13 @@ export function parseScdp(bruto: string): ScdpImport {
     }
   }
 
-  /* ----- Descrição do motivo (para na próxima seção, se houver) ----- */
+  /* ----- Descrição do motivo (para na próxima seção/aba, se houver) ----- */
+  // Além das seções do RVN, corta nas abas/rótulos que o SCDP mostra logo
+  // depois (Confirmação da viagem, Complemento, Resumo, Dados do Proposto,
+  // Reunião de Colegiados, Lei ou Decreto, Portaria, Auxílios…) — isso não
+  // faz parte da descrição do evento.
   const mDesc = t.match(
-    /Descri[çc][ãa]o do Motivo da Viagem:\s*\n?\s*([\s\S]+?)(?=\n\s*(?:ROTEIRO DA VIAGEM|QUADRO DE TOTALIZA)|$)/i,
+    /Descri[çc][ãa]o do Motivo da Viagem:\s*\n?\s*([\s\S]+?)(?=\n\s*(?:ROTEIRO DA VIAGEM|QUADRO DE TOTALIZA|CONFIRMA[ÇC][ÃA]O DA VIAGEM|COMPLEMENTO|RESUMO|DADOS DO PROPOSTO|DADOS ATUALIZADOS|REUNI[ÃA]O DE COLEGIADOS|LEI OU DECRETO|PORTARIA|AUX[ÍI]LIO-ALIMENTA|AUX[ÍI]LIO-TRANSPORTE)|$)/i,
   );
   if (mDesc) {
     const desc = mDesc[1].replace(/\s*\n+\s*/g, " ").trim();
