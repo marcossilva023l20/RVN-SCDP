@@ -121,6 +121,9 @@ export function DeclaracaoExtravio({
           alt="Brasão da República Federativa do Brasil"
           width={959}
           height={959}
+          /* o documento fica fora da tela: sem "lazy", para o brasão já estar
+             carregado quando o botão "Declaração" gerar o PDF */
+          loading="eager"
           unoptimized
           style={{
             display: "block",
