@@ -119,8 +119,8 @@ export function DeclaracaoExtravio({
         <Image
           src="/images/brasao-republica.png"
           alt="Brasão da República Federativa do Brasil"
-          width={116}
-          height={116}
+          width={959}
+          height={959}
           unoptimized
           style={{
             display: "block",
