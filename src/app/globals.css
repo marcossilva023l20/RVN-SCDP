@@ -79,11 +79,41 @@ body {
   body {
     background: #fff !important;
   }
+  /* Wrappers da interface (preview) não entram no papel: sem padding,
+     sem altura de tela e sem rolagem — senão sobram faixas em branco nas
+     laterais/topo e o mínimo de 29,7cm empurra tudo para uma 2ª folha. */
+  .rvn-print-reset {
+    display: block !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
   .rvn-paper {
     width: auto !important;
+    /* sem o mínimo de uma folha inteira: quem manda no tamanho é o @page */
+    min-height: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
     margin: 0 !important;
+    /* o preview é exibido com transform: scale() — no papel, tamanho real */
+    transform: none !important;
+  }
+  .rvn-paper-stack {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  /* No papel, a largura é a da folha: as colunas de tela (formulário x
+     documento) não valem e o documento fica sempre visível. */
+  .rvn-print-col {
+    display: block !important;
+  }
+  .rvn-hide-print {
+    display: none !important;
   }
   .print-stack {
     display: block !important;

@@ -427,9 +427,9 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
   }, []);
 
   const previewDoc = (
-    <div ref={wrapRef} className="mx-auto w-full max-w-[850px]">
+    <div ref={wrapRef} className="rvn-print-reset mx-auto w-full max-w-[850px]">
       <div
-        className="relative overflow-hidden"
+        className="rvn-paper-stack relative overflow-hidden"
         style={{ height: paperH * scale }}
       >
         <div
@@ -547,10 +547,10 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
       </header>
 
       {/* ===== Corpo ===== */}
-      <div className="mx-auto flex w-full max-w-[1640px] flex-1 gap-0">
+      <div className="rvn-print-reset mx-auto flex w-full max-w-[1640px] flex-1 gap-0">
         {/* ---- Coluna do formulário ---- */}
         <div
-          className={`w-full lg:w-[460px] lg:shrink-0 ${showPreviewMobile ? "hidden lg:block" : ""}`}
+          className={`rvn-hide-print w-full lg:w-[460px] lg:shrink-0 ${showPreviewMobile ? "hidden lg:block" : ""}`}
         >
           <div className="dark-scroll space-y-3 px-4 py-4 lg:h-[calc(100vh-57px)] lg:overflow-y-auto lg:pr-3">
             {/* 0. Importar do SCDP */}
@@ -1054,16 +1054,16 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
 
         {/* ---- Coluna do preview ---- */}
         <div
-          className={`min-w-0 flex-1 ${showPreviewMobile ? "block" : "hidden lg:block"}`}
+          className={`rvn-print-reset rvn-print-col min-w-0 flex-1 ${showPreviewMobile ? "block" : "hidden lg:block"}`}
         >
-          <div className="dark-scroll relative h-[calc(100vh-57px)] overflow-y-auto border-l border-white/[0.07] bg-[#111a14]">
-            <div className="pointer-events-none sticky top-0 z-10 flex justify-center py-3">
+          <div className="rvn-print-reset dark-scroll relative h-[calc(100vh-57px)] overflow-y-auto border-l border-white/[0.07] bg-[#111a14]">
+            <div className="no-print pointer-events-none sticky top-0 z-10 flex justify-center py-3">
               <span className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/10 bg-[#0d150f]/85 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#7e9789] backdrop-blur">
                 <FileText className="h-3.5 w-3.5" />
                 Documento oficial · A4
               </span>
             </div>
-            <div className="px-4 pb-16">{previewDoc}</div>
+            <div className="rvn-print-reset px-4 pb-16">{previewDoc}</div>
           </div>
         </div>
       </div>

@@ -33,12 +33,12 @@ export default async function ImprimirPage({
   const draft = reportToDraft({ ...report, bilhetes: rows });
 
   return (
-    <div className="min-h-screen bg-paper-deep/60 py-24">
+    <div className="rvn-print-reset min-h-screen bg-paper-deep/60 py-24">
       <PrintBar
         id={numId}
         nomeArquivo={nomeArquivoPdf(draft.pcdpNumero, draft.nome)}
       />
-      <main className="px-4">
+      <main className="rvn-print-reset px-4">
         <div id="rvn-paper" className="rvn-paper mx-auto">
           <RvnDocument draft={draft} />
         </div>
