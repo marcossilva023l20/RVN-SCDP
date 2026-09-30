@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
    * isso tem os arquivos estáticos (_next/static) bloqueados — a página
    * abre sem estilo nem scripts.
    */
-  allowedDevOrigins: ["*.e2b.app"],
+  allowedDevOrigins: ["*.e2b.app", "localhost", "127.0.0.1"],
 };
 
 export default nextConfig;

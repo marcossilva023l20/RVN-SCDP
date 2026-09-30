@@ -30,7 +30,7 @@ const cellStyle: CSSProperties = {
   padding: "0 0.123cm",
   verticalAlign: "middle",
   fontSize: "10pt",
-  lineHeight: 1.35,
+  lineHeight: 1.3,
 };
 
 /* ---------- Primitivos ---------- */
@@ -170,13 +170,13 @@ export function RvnDocument({ draft }: { draft: ReportDraft }) {
       style={{
         fontFamily: '"Times New Roman", "Liberation Serif", Times, serif',
         fontSize: "10pt",
-        lineHeight: 1.35,
+        lineHeight: 1.3,
       }}
     >
       {/* ===== Cabeçalho (fora da tabela) — 10pt negrito centralizado ===== */}
       <header
         className="text-center"
-        style={{ lineHeight: 1.2, breakInside: "avoid" }}
+        style={{ lineHeight: 1.15, breakInside: "avoid" }}
       >
         <Image
           src="/images/brasao-republica.png"
@@ -190,7 +190,7 @@ export function RvnDocument({ draft }: { draft: ReportDraft }) {
             width: "1.95cm",
             height: "1.95cm",
             objectFit: "contain",
-            margin: "0 auto 0.15cm",
+            margin: "0 auto 0.05cm",
           }}
         />
         {linhasCabecalho.map((l, i) => (
@@ -498,14 +498,15 @@ export function RvnDocument({ draft }: { draft: ReportDraft }) {
             </tr>
           ))}
 
-          {/* Local/data + assinatura (sem linha desenhada, como no modelo) */}
-          <tr>
+          {/* Local/data + assinatura (sem linha desenhada, como no modelo).
+              A linha inteira é mantida junta: nunca sai uma assinatura órfã
+              numa página seguinte. */}
+          <tr style={{ breakInside: "avoid" }}>
             <Cell span={15}>
               <div className="break-inside-avoid text-center">
                 <p style={{ margin: 0 }}>
                   {draft.localData || "\u00A0"}
                 </p>
-                <p style={{ margin: 0 }}>&nbsp;</p>
                 <p style={{ margin: 0 }}>&nbsp;</p>
                 <p style={{ margin: 0 }}>&nbsp;</p>
                 <p style={{ margin: 0, fontWeight: 700 }}>

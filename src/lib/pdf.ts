@@ -173,10 +173,28 @@ export async function gerarPdfA4(
     const alturaPaginaPx = Math.round(alturaPaginaMm * pxPorMm);
 
     const topo = folha.getBoundingClientRect().top;
+
+    /** Está dentro de um bloco que não pode ser dividido (ex.: a linha da
+     *  assinatura)? Então o corte da página não pode passar por aqui — a
+     *  quebra fica antes do bloco inteiro, nunca no meio dele. */
+    const dentroDeBlocoInquebravel = (el: HTMLElement) => {
+      let pai = el.parentElement;
+      while (pai && pai !== copia) {
+        const estilo = getComputedStyle(pai);
+        if (estilo.breakInside === "avoid" || estilo.pageBreakInside === "avoid")
+          return true;
+        pai = pai.parentElement;
+      }
+      return false;
+    };
+
     const cortes: number[] = [canvas.height];
     copia.querySelectorAll<HTMLElement>("*").forEach((el) => {
       const r = el.getBoundingClientRect();
-      cortes.push(Math.round((r.bottom - topo) * escalaCss));
+      const fim = Math.round((r.bottom - topo) * escalaCss);
+      // Blocos inquebráveis (assinatura + local/data): só se corta na borda
+      // de fora do bloco, jamais entre as linhas de dentro dele.
+      if (!dentroDeBlocoInquebravel(el)) cortes.push(fim);
     });
 
     const fatias = calcularFatias(cortes, canvas.height, alturaPaginaPx);

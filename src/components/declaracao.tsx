@@ -26,7 +26,7 @@ const cellStyle: CSSProperties = {
   padding: "0 0.123cm",
   verticalAlign: "middle",
   fontSize: "10pt",
-  lineHeight: 1.35,
+  lineHeight: 1.3,
   textAlign: "center",
 };
 
@@ -108,13 +108,13 @@ export function DeclaracaoExtravio({
       style={{
         fontFamily: '"Times New Roman", "Liberation Serif", Times, serif',
         fontSize: "10pt",
-        lineHeight: 1.35,
+        lineHeight: 1.3,
       }}
     >
       {/* ===== Cabeçalho (igual ao do relatório) ===== */}
       <header
         className="text-center"
-        style={{ lineHeight: 1.2, breakInside: "avoid" }}
+        style={{ lineHeight: 1.15, breakInside: "avoid" }}
       >
         <Image
           src="/images/brasao-republica.png"
@@ -130,7 +130,7 @@ export function DeclaracaoExtravio({
             width: "1.95cm",
             height: "1.95cm",
             objectFit: "contain",
-            margin: "0 auto 0.15cm",
+            margin: "0 auto 0.05cm",
           }}
         />
         {linhasCabecalho.map((l, i) => (
