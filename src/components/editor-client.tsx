@@ -560,10 +560,11 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
                 <strong className="text-[#a9bcae]">Quadro de Totalizações</strong>{" "}
                 e{" "}
                 <strong className="text-[#a9bcae]">Bilhetes a Prestar Contas</strong>{" "}
+                ou <strong className="text-[#a9bcae]">Bilhetes da PCDP</strong>{" "}
                 (inclusive o detalhe do bilhete, com reserva e horários).
                 Cole abaixo: o app preenche nº do PCDP, datas (formato militar),
-                itinerário completo, evento, diárias, os bilhetes (aéreo/ônibus)
-                nas seções 8/9 e — da aba{" "}
+                itinerário completo, evento, diárias, a opção de veículo oficial,
+                os bilhetes (aéreo/ônibus) nas seções 8/9 e — da aba{" "}
                 <strong className="text-[#a9bcae]">Dados Atualizados</strong> —
                 CPF, RG, e-mail e dados bancários. Só o que for reconhecido é
                 alterado.

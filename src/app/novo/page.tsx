@@ -18,12 +18,19 @@ function NovoInner() {
     const trecho = (params.get("t") ?? "").trim();
     // Texto copiado no SCDP: extrai PCDP, datas, itinerário, evento, diárias…
     const importado = parseScdp(trecho);
+    // Se o parser não reconheceu a descrição, guarda o texto bruto só quando
+    // ele *é* uma descrição (texto curto, sem seções do SCDP) — assim o campo
+    // "Evento" nunca recebe o bloco de bilhetes/roteiro colado.
+    const trechoEhOutraSecao =
+      trecho.length > 400 ||
+      /BILHETES|ROTEIRO DA VIAGEM|INFORMA[ÇC][ÕO]ES DA VIAGEM|QUADRO DE TOTALIZA|C[óo]digo da Reserva|Tarifa|DADOS ATUALIZADOS/i.test(
+        trecho,
+      );
     const body: Record<string, unknown> = {
       titulo: pcdp ? `RVN — PCDP ${pcdp}` : "Relatório sem título",
       pcdpNumero: importado.pcdpNumero ?? pcdp,
-      // Se o parser não reconheceu a descrição, guarda o texto bruto para
-      // facilitar a edição posterior.
-      eventoDescricao: importado.eventoDescricao || trecho,
+      eventoDescricao:
+        importado.eventoDescricao || (trechoEhOutraSecao ? "" : trecho),
     };
     for (const chave of CHAVES_IMPORT_SCDP) {
       const v = importado[chave];

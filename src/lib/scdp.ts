@@ -550,7 +550,7 @@ export function parseScdp(bruto: string): ScdpImport {
   // Reunião de Colegiados, Lei ou Decreto, Portaria, Auxílios…) — isso não
   // faz parte da descrição do evento.
   const mDesc = t.match(
-    /Descri[çc][ãa]o do Motivo da Viagem:\s*\n?\s*([\s\S]+?)(?=\n\s*(?:ROTEIRO DA VIAGEM|QUADRO DE TOTALIZA|CONFIRMA[ÇC][ÃA]O DA VIAGEM|COMPLEMENTO|RESUMO|DADOS DO PROPOSTO|DADOS ATUALIZADOS|DETALHES DO PROPOSTO|DADOS N[OA] VIAGEM|DADOS DA VIAGEM|REUNI[ÃA]O DE COLEGIADOS|LEI OU DECRETO|PORTARIA|AUX[ÍI]LIO-ALIMENTA|AUX[ÍI]LIO-TRANSPORTE)|$)/i,
+    /Descri[çc][ãa]o do Motivo da Viagem:\s*\n?\s*([\s\S]*?)(?=(?:BILHETES DA PCDP|BILHETES A PRESTAR CONTAS|\* Clique em um trecho|C[óo]digo da Reserva|Companhia de Transporte|N[úu]mero do Bilhete|Data do Processamento|Tarifa de Embarque|Ag[êe]ncia de Viagem|Situa[çc][ãa]o do Trajeto|Cidade de Origem|Cidade de Destino)|\n\s*(?:ROTEIRO DA VIAGEM|QUADRO DE TOTALIZA|CONFIRMA[ÇC][ÃA]O DA VIAGEM|COMPLEMENTO|RESUMO|DADOS DO PROPOSTO|DADOS ATUALIZADOS|DETALHES DO PROPOSTO|DADOS N[OA] VIAGEM|DADOS DA VIAGEM|REUNI[ÃA]O DE COLEGIADOS|LEI OU DECRETO|PORTARIA|AUX[ÍI]LIO-ALIMENTA|AUX[ÍI]LIO-TRANSPORTE)|$)/i,
   );
   if (mDesc) {
     // Mesmo sem quebra de linha antes, tira do fim os rótulos/abas que o SCDP
