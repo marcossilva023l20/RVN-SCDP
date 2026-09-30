@@ -30,6 +30,7 @@ import { parseScdp, CHAVES_IMPORT_SCDP } from "@/lib/scdp";
 import { BotaoGerarPdf } from "@/components/botao-pdf";
 import { lerCaptura, limparCaptura } from "@/lib/captura";
 import { nomeArquivoPdf } from "@/lib/pdf";
+import { PADROES } from "@/lib/padroes";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -344,7 +345,7 @@ export function EditorClient({
     if (v > 0) upd({ diariasValor: formataMoeda(v) });
   };
 
-  const [geradorCidade, setGeradorCidade] = useState("");
+  const [geradorCidade, setGeradorCidade] = useState<string>(PADROES.cidadeUf);
   const hojeISO = new Date().toISOString().slice(0, 10);
   const [geradorData, setGeradorData] = useState(hojeISO);
 

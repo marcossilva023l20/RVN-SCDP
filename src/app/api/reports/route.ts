@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { bilhetes, profiles, reports } from "@/db/schema";
 import { tituloAutomatico, tituloPadrao } from "@/lib/format";
 import { cabecalhoPreenchido } from "@/lib/org";
+import { PADROES } from "@/lib/padroes";
 import { asc, desc, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
@@ -25,7 +26,11 @@ export async function POST(req: NextRequest) {
     ...cabecalhoPreenchido(profile ?? {}),
     tipoBeneficiario: profile?.tipoBeneficiario ?? "militar",
     nome: profile?.nome ?? "",
-    om: profile?.om ?? "",
+    // OM: o do perfil quando houver; senão o padrão da unidade.
+    om: profile?.om?.trim() ? profile.om : PADROES.om,
+    // Campos que quase sempre são os mesmos (editáveis no editor).
+    diariasBi: PADROES.diariasBi,
+    devolucaoJustificativa: PADROES.devolucaoJustificativa,
     postoCargo: profile?.postoCargo ?? "",
     cpf: profile?.cpf ?? "",
     banco: profile?.banco ?? "",
@@ -57,7 +62,10 @@ export async function POST(req: NextRequest) {
     "pcdpNumero",
     "pcdpData",
     "nome",
+    "om",
     "tipoBeneficiario",
+    "diariasBi",
+    "devolucaoJustificativa",
     "cpf",
     "identidade",
     "email",

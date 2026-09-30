@@ -1,6 +1,7 @@
 import { EditorClient } from "@/components/editor-client";
 import { db } from "@/db";
 import { bilhetes, reports } from "@/db/schema";
+import { comPadroes } from "@/lib/padroes";
 import { reportToDraft } from "@/lib/types";
 import { asc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
@@ -36,7 +37,12 @@ export default async function EditorPage({
     .where(eq(bilhetes.reportId, numId))
     .orderBy(asc(bilhetes.ordem), asc(bilhetes.id));
 
-  const draft = { ...reportToDraft({ ...report, bilhetes: rows }), id: numId };
+  // Campos em branco recebem os valores padrão da unidade (a pessoa troca no
+  // editor quando houver diferença).
+  const draft = {
+    ...comPadroes(reportToDraft({ ...report, bilhetes: rows })),
+    id: numId,
+  };
 
   return (
     <EditorClient
