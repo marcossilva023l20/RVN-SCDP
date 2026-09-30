@@ -1,4 +1,5 @@
 import type { Bilhete, Profile, Report } from "@/db/schema";
+import { cabecalhoPreenchido } from "@/lib/org";
 
 export type { Bilhete, Profile, Report };
 
@@ -95,11 +96,9 @@ export function reportToDraft(r: ReportWithBilhetes): ReportDraft {
   return {
     titulo: r.titulo,
     status: r.status,
-    orgLinha1: r.orgLinha1,
-    orgLinha2: r.orgLinha2,
-    orgLinha3: r.orgLinha3,
-    orgLinha4: r.orgLinha4,
-    orgLinha5: r.orgLinha5,
+    // Linhas em branco recebem o padrão do Batalhão (relatórios antigos,
+    // criados antes do cabeçalho completo, continuam saindo corretos).
+    ...cabecalhoPreenchido(r),
     pcdpNumero: r.pcdpNumero,
     pcdpData: r.pcdpData,
     tipoBeneficiario: r.tipoBeneficiario,

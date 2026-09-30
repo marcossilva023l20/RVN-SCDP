@@ -7,6 +7,28 @@ Stack: Next.js 16 · PostgreSQL · Drizzle ORM · Tailwind CSS 4
 
 ---
 
+## Cabeçalho oficial do documento
+
+Todo RVN sai com as 5 linhas institucionais, nesta ordem:
+
+```
+MINISTÉRIO DA DEFESA
+EXÉRCITO BRASILEIRO
+3º BATALHÃO DE ENGENHARIA DE CONSTRUÇÃO
+(1º BATALHÃO DE ENGENHARIA/1942)
+“BATALHÃO VISCONDE DA PARNAÍBA”
+```
+
+- O padrão fica em [`src/lib/org.ts`](src/lib/org.ts) (também usado como valor
+  inicial das colunas no banco).
+- Linha deixada em branco volta automaticamente a esse padrão — relatórios
+  antigos, criados antes do cabeçalho completo, também passam a exibi-lo.
+- Para outra OM, ajuste as linhas no **painel → Perfil → Cabeçalho do
+  documento** (já vale para os próximos relatórios) ou, em um relatório
+  específico, no **editor → seção “H”**.
+
+---
+
 ## Hospedando o app (grátis) — Vercel + Neon
 
 Caminho recomendado: **Vercel** (hospeda o Next.js) + **Neon** (hospeda o

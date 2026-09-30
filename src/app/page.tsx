@@ -1,6 +1,7 @@
 import { DashboardClient } from "@/components/dashboard-client";
 import { db } from "@/db";
-import { profiles, reports } from "@/db/schema";
+import { reports } from "@/db/schema";
+import { getPerfil } from "@/lib/profile";
 import { desc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +12,8 @@ export default async function HomePage() {
     .from(reports)
     .orderBy(desc(reports.updatedAt));
 
-  let [profile] = await db.select().from(profiles).limit(1);
-  if (!profile) {
-    [profile] = await db.insert(profiles).values({}).returning();
-  }
+  // Cria o perfil na primeira execução e completa o cabeçalho do Batalhão
+  const profile = await getPerfil();
 
   return <DashboardClient initialReports={rows} initialProfile={profile} />;
 }

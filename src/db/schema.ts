@@ -1,3 +1,4 @@
+import { ORG_LINHAS_PADRAO } from "@/lib/org";
 import {
   integer,
   pgTable,
@@ -6,6 +7,19 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 
+/*
+ * Cabeçalho institucional: as 5 linhas seguem o padrão do 3º Batalhão de
+ * Engenharia de Construção (em `@/lib/org`), editáveis por perfil/relatório
+ * para o caso de outra OM.
+ */
+const cabecalho = {
+  orgLinha1: text("org_linha1").notNull().default(ORG_LINHAS_PADRAO.orgLinha1),
+  orgLinha2: text("org_linha2").notNull().default(ORG_LINHAS_PADRAO.orgLinha2),
+  orgLinha3: text("org_linha3").notNull().default(ORG_LINHAS_PADRAO.orgLinha3),
+  orgLinha4: text("org_linha4").notNull().default(ORG_LINHAS_PADRAO.orgLinha4),
+  orgLinha5: text("org_linha5").notNull().default(ORG_LINHAS_PADRAO.orgLinha5),
+};
+
 /**
  * Perfil do beneficiário + cabeçalho da OM.
  * Guardado uma única vez e reutilizado em cada novo relatório.
@@ -13,11 +27,7 @@ import {
 export const profiles = pgTable("profiles", {
   id: serial("id").primaryKey(),
   // Cabeçalho do documento (5 linhas, como no modelo oficial)
-  orgLinha1: text("org_linha1").notNull().default("MINISTÉRIO DA DEFESA"),
-  orgLinha2: text("org_linha2").notNull().default("EXÉRCITO BRASILEIRO"),
-  orgLinha3: text("org_linha3").notNull().default(""),
-  orgLinha4: text("org_linha4").notNull().default(""),
-  orgLinha5: text("org_linha5").notNull().default(""),
+  ...cabecalho,
   // Beneficiário
   tipoBeneficiario: text("tipo_beneficiario").notNull().default("militar"), // militar | civil | colaborador
   nome: text("nome").notNull().default(""),
@@ -42,11 +52,7 @@ export const reports = pgTable("reports", {
   status: text("status").notNull().default("rascunho"), // rascunho | finalizado
 
   // Cabeçalho (cópia do perfil no momento da criação, editável por relatório)
-  orgLinha1: text("org_linha1").notNull().default("MINISTÉRIO DA DEFESA"),
-  orgLinha2: text("org_linha2").notNull().default("EXÉRCITO BRASILEIRO"),
-  orgLinha3: text("org_linha3").notNull().default(""),
-  orgLinha4: text("org_linha4").notNull().default(""),
-  orgLinha5: text("org_linha5").notNull().default(""),
+  ...cabecalho,
 
   // 1. PCDP
   pcdpNumero: text("pcdp_numero").notNull().default(""),
