@@ -1,20 +1,21 @@
 "use client";
 
+import type { ReportDraft } from "@/lib/types";
 import { FileDown, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { gerarPdfA4 } from "@/lib/pdf";
 
 /**
- * Botão "Gerar PDF": monta o arquivo A4 no próprio navegador e baixa.
- * Sem diálogo de impressão e sem depender do servidor.
+ * Botão "Gerar PDF": o rascunho atual (mesmo sem salvar) vai para
+ * /api/pdf, que devolve o documento em PDF A4 de TEXTO VETORIAL — nada de
+ * imagem: o texto pode ser selecionado e pesquisado, e a impressão sai nítida.
  */
 export function BotaoGerarPdf({
-  obterAlvo,
+  draft,
   nomeArquivo,
   className,
   rotulo = "Gerar PDF",
 }: {
-  obterAlvo: () => HTMLElement | null;
+  draft: ReportDraft;
   nomeArquivo: string;
   className?: string;
   rotulo?: string;
@@ -22,11 +23,25 @@ export function BotaoGerarPdf({
   const [estado, setEstado] = useState<"parado" | "gerando" | "erro">("parado");
 
   const gerar = async () => {
-    const alvo = obterAlvo();
-    if (!alvo || estado === "gerando") return;
+    if (estado === "gerando") return;
     setEstado("gerando");
     try {
-      await gerarPdfA4(alvo, nomeArquivo);
+      const res = await fetch("/api/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      if (!blob.size) throw new Error("PDF vazio");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nomeArquivo;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
       setEstado("parado");
     } catch (erro) {
       console.error("Falha ao gerar o PDF:", erro);
@@ -41,8 +56,8 @@ export function BotaoGerarPdf({
       disabled={estado === "gerando"}
       title={
         estado === "erro"
-          ? "Não foi possível gerar o PDF — use “Imprimir / PDF” e escolha Salvar como PDF."
-          : "Baixar o relatório em PDF, em folha A4"
+          ? "Não foi possível gerar o PDF — use “Imprimir / Salvar PDF” e escolha Salvar como PDF."
+          : "Baixar o relatório em PDF (texto), em folha A4"
       }
       className={className}
     >

@@ -17,6 +17,7 @@ import {
 import {
   formataMoeda,
   montaLocalData,
+  nomeArquivoPdf,
   parseMoeda,
   valorPorExtenso,
 } from "@/lib/format";
@@ -28,7 +29,7 @@ import {
 } from "@/lib/types";
 import { parseScdp, CHAVES_IMPORT_SCDP } from "@/lib/scdp";
 import { BotaoGerarPdf } from "@/components/botao-pdf";
-import { nomeArquivoPdf } from "@/lib/pdf";
+
 import {
   ArrowLeft,
   BadgeCheck,
@@ -219,7 +220,14 @@ const CAMPOS_OBRIGATORIOS: Array<[keyof ReportDraft, string]> = [
   ["localData", "Local e data"],
 ];
 
-export function EditorClient({ initial }: { initial: ReportDraft }) {
+export function EditorClient({
+  initial,
+  textoInicial = "",
+}: {
+  initial: ReportDraft;
+  /** texto do SCDP capturado pelo favorito, já pronto para conferir */
+  textoInicial?: string;
+}) {
   const router = useRouter();
   const [draft, setDraft] = useState<ReportDraft>(initial);
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">(
@@ -340,8 +348,23 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
     });
 
   /* ---- Importar do SCDP (texto colado) ---- */
-  const [textoScdp, setTextoScdp] = useState("");
-  const [resumoImport, setResumoImport] = useState("");
+  // O favorito "Capturar do SCDP" entrega o texto selecionado já nesta caixa
+  // (chega pela URL e é lido no servidor, sem piscar na tela).
+  const [textoScdp, setTextoScdp] = useState(textoInicial);
+  const [resumoImport, setResumoImport] = useState(
+    textoInicial
+      ? "Texto capturado do SCDP. Confira e clique em “Preencher campos”."
+      : "",
+  );
+
+  // Depois de receber o texto, limpa a URL (o texto já está na caixa).
+  useEffect(() => {
+    if (!textoInicial) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("t")) return;
+    url.searchParams.delete("t");
+    window.history.replaceState(null, "", url.toString());
+  }, [textoInicial]);
 
   const importarScdp = () => {
     const importado = parseScdp(textoScdp);
@@ -542,7 +565,7 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
               <Trash2 className="h-4 w-4" />
             </button>
             <BotaoGerarPdf
-              obterAlvo={() => paperRef.current}
+              draft={draft}
               nomeArquivo={nomeArquivoPdf(draft.pcdpNumero, draft.nome)}
               className="flex items-center gap-2 rounded-lg border border-[#8fb99d]/40 bg-[#8fb99d]/10 px-3.5 py-2 text-[12.5px] font-bold text-[#c9e6d2] transition-colors hover:bg-[#8fb99d]/20 disabled:opacity-60"
             />
@@ -571,7 +594,7 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
               num="0"
               title="Importar do SCDP (colar texto)"
               icon={ClipboardPaste}
-              defaultOpen={false}
+              defaultOpen={!!textoInicial}
             >
               <p className="-mt-1 text-[12px] leading-relaxed text-[#7e9789]">
                 No SCDP, selecione e copie as seções{" "}

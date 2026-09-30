@@ -14,10 +14,13 @@ export const metadata: Metadata = {
 
 export default async function EditorPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ t?: string }>;
 }) {
   const { id } = await params;
+  const { t } = await searchParams;
   const numId = Number(id);
   if (!Number.isFinite(numId)) notFound();
 
@@ -35,5 +38,5 @@ export default async function EditorPage({
 
   const draft = { ...reportToDraft({ ...report, bilhetes: rows }), id: numId };
 
-  return <EditorClient initial={draft} />;
+  return <EditorClient initial={draft} textoInicial={t ?? ""} />;
 }
