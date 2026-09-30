@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { bilhetes, profiles, reports } from "@/db/schema";
+import { cabecalhoPreenchido } from "@/lib/org";
 import { asc, desc, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
@@ -19,11 +20,8 @@ export async function POST(req: NextRequest) {
 
   let base: Record<string, unknown> = {
     titulo: "Relatório sem título",
-    orgLinha1: profile?.orgLinha1 ?? "MINISTÉRIO DA DEFESA",
-    orgLinha2: profile?.orgLinha2 ?? "EXÉRCITO BRASILEIRO",
-    orgLinha3: profile?.orgLinha3 ?? "",
-    orgLinha4: profile?.orgLinha4 ?? "",
-    orgLinha5: profile?.orgLinha5 ?? "",
+    // Cabeçalho do documento: padrão do Batalhão preenchido automaticamente
+    ...cabecalhoPreenchido(profile ?? {}),
     tipoBeneficiario: profile?.tipoBeneficiario ?? "militar",
     nome: profile?.nome ?? "",
     om: profile?.om ?? "",

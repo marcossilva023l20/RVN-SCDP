@@ -2,6 +2,12 @@
 
 import { RvnDocument } from "@/components/document";
 import {
+  ORG_LINHAS_LABEL,
+  ORG_LINHAS_PADRAO,
+  cabecalhoEmLinhas,
+  semAspasExternas,
+} from "@/lib/org";
+import {
   DataHoraField,
   DocRadioGroup,
   Field,
@@ -480,29 +486,52 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
               done={!!draft.orgLinha1 && !!draft.orgLinha2}
             >
               <p className="-mt-1 text-[12px] leading-relaxed text-[#7e9789]">
-                Preenchido automaticamente a partir do seu perfil — ajuste aqui
-                apenas se este relatório for de outra Organização Militar.
+                Estas 5 linhas formam o cabeçalho oficial do documento (acima do
+                título). Vêm do seu perfil — ajuste aqui apenas se este
+                relatório for de outra Organização Militar.
               </p>
-              {[1, 2, 3, 4, 5].map((n) => {
-                const key = `orgLinha${n}` as keyof ReportDraft;
-                return (
-                  <Field key={key} label={`Linha ${n}`}>
-                    <TextInput
-                      value={draft[key] as string}
-                      onChange={(v) => upd({ [key]: v })}
-                      placeholder={
-                        n === 1
-                          ? "MINISTÉRIO DA DEFESA"
-                          : n === 2
-                            ? "EXÉRCITO BRASILEIRO"
-                            : n === 5
-                              ? "NOME HISTÓRICO DA OM (entre aspas)"
-                              : ""
-                      }
-                    />
-                  </Field>
-                );
-              })}
+              {/* Prévia do cabeçalho, como sai na impressão */}
+              <div
+                className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-center"
+                style={{
+                  fontFamily:
+                    '"Times New Roman", "Liberation Serif", Times, serif',
+                }}
+              >
+                {cabecalhoEmLinhas(draft).map((l, i) => (
+                  <p
+                    key={i}
+                    className="text-[12px] font-bold leading-snug text-[#edf2ee]"
+                  >
+                    {i === 4 ? `“${semAspasExternas(l)}”` : l}
+                  </p>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => upd({ ...ORG_LINHAS_PADRAO })}
+                className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11.5px] font-semibold text-[#cfe0d5] transition-colors hover:bg-white/[0.06]"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Restaurar cabeçalho do 3º BEC
+              </button>
+              {(
+                [
+                  "orgLinha1",
+                  "orgLinha2",
+                  "orgLinha3",
+                  "orgLinha4",
+                  "orgLinha5",
+                ] as const
+              ).map((key) => (
+                <Field key={key} label={ORG_LINHAS_LABEL[key]}>
+                  <TextInput
+                    value={draft[key]}
+                    onChange={(v) => upd({ [key]: v })}
+                    placeholder={ORG_LINHAS_PADRAO[key]}
+                  />
+                </Field>
+              ))}
             </EditorSection>
 
             {/* 1. PCDP */}

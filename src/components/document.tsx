@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { cabecalhoEmLinhas, semAspasExternas } from "@/lib/org";
 import type { ReportDraft } from "@/lib/types";
 import type { CSSProperties, ReactNode } from "react";
 
@@ -9,6 +10,7 @@ import type { CSSProperties, ReactNode } from "react";
  * - Cabeçalho: brasão da República em preto e branco, centralizado (1,5cm);
  *   5 linhas, Times New Roman 10pt, negrito, centralizadas;
  *   1 linha em branco (8pt); título "RELATÓRIO DE VIAGEM NACIONAL" 11pt negrito.
+ *   Linhas em branco recebem o padrão do Batalhão (ver `@/lib/org`).
  * - Corpo: UMA única tabela de 15 colunas (larguras em cm da grade original),
  *   bordas 1.05pt pretas, padding lateral 0.123cm, alinhamento vertical médio.
  * - Rótulos de seção em negrito; campos em 10pt normal; checkboxes literais
@@ -110,13 +112,9 @@ export function RvnDocument({ draft }: { draft: ReportDraft }) {
   const naoUtilizados = draft.bilhetes.filter((b) => b.tipo === "nao_utilizado");
   const utilizados = draft.bilhetes.filter((b) => b.tipo === "utilizado");
 
-  const linhasCabecalho = [
-    draft.orgLinha1,
-    draft.orgLinha2,
-    draft.orgLinha3,
-    draft.orgLinha4,
-    draft.orgLinha5,
-  ];
+  // 5 linhas institucionais, na ordem de impressão; se alguma estiver em
+  // branco, entra o padrão do Batalhão.
+  const linhasCabecalho = cabecalhoEmLinhas(draft);
 
   const retornoOps: Array<{ value: string; label: string }> = [
     { value: "prevista", label: "na data prevista." },
@@ -195,17 +193,12 @@ export function RvnDocument({ draft }: { draft: ReportDraft }) {
             margin: "0 auto 0.1cm",
           }}
         />
-        {linhasCabecalho.map(
-          (l, i) =>
-            l && (
-              <p
-                key={i}
-                style={{ margin: 0, fontWeight: 700, fontSize: "10pt" }}
-              >
-                {i === 4 ? `“${l}”` : l}
-              </p>
-            ),
-        )}
+        {linhasCabecalho.map((l, i) => (
+          <p key={i} style={{ margin: 0, fontWeight: 700, fontSize: "10pt" }}>
+            {/* Nome histórico da OM sai entre aspas (como no modelo) */}
+            {i === 4 ? `“${semAspasExternas(l)}”` : l}
+          </p>
+        ))}
         {/* espaçador 8pt */}
         <p style={{ margin: 0, fontSize: "8pt" }}>&nbsp;</p>
         <p style={{ margin: 0, fontWeight: 700, fontSize: "11pt" }}>

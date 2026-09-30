@@ -1,16 +1,14 @@
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
+import { cabecalhoPreenchido } from "@/lib/org";
+import { getPerfil } from "@/lib/profile";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  let [profile] = await db.select().from(profiles).limit(1);
-  if (!profile) {
-    [profile] = await db.insert(profiles).values({}).returning();
-  }
-  return Response.json(profile);
+  return Response.json(await getPerfil());
 }
 
 const CAMPOS = [
@@ -40,11 +38,20 @@ export async function PUT(req: NextRequest) {
 
   let [profile] = await db.select().from(profiles).limit(1);
   if (!profile) {
-    [profile] = await db.insert(profiles).values(update).returning();
+    // As 5 linhas do cabeçalho são sempre gravadas (linhas em branco voltam
+    // ao padrão do Batalhão).
+    [profile] = await db
+      .insert(profiles)
+      .values({ ...update, ...cabecalhoPreenchido(update) })
+      .returning();
   } else {
     [profile] = await db
       .update(profiles)
-      .set({ ...update, updatedAt: new Date() })
+      .set({
+        ...update,
+        ...cabecalhoPreenchido({ ...profile, ...update }),
+        updatedAt: new Date(),
+      })
       .where(eq(profiles.id, profile.id))
       .returning();
   }

@@ -1,0 +1,19 @@
+# Dependências
+node_modules/
+
+# Build do Next.js
+.next/
+out/
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# Variáveis de ambiente — nunca suba credenciais
+.env
+.env*.local
+
+# Sistema
+.DS_Store
+*.pem
+
+# Vercel
+.vercel

@@ -2,6 +2,12 @@
 
 import type { Profile, Report, ReportDraft } from "@/lib/types";
 import {
+  ORG_LINHAS_LABEL,
+  ORG_LINHAS_PADRAO,
+  cabecalhoEmLinhas,
+  semAspasExternas,
+} from "@/lib/org";
+import {
   ArrowRight,
   BadgeCheck,
   BookOpenCheck,
@@ -513,31 +519,43 @@ export function DashboardClient({
                     />
                   </div>
                   <div className="col-span-2 border-t border-line/70 pt-3">
-                    <label className={labelCls}>
-                      Cabeçalho — linha 3 (nome da OM)
-                    </label>
-                    <input
-                      className={inputCls}
-                      placeholder="Ex.: 3º BATALHÃO DE ENGENHARIA DE CONSTRUÇÃO"
-                      value={profile.orgLinha3}
-                      onChange={(e) =>
-                        setProfile({ ...profile, orgLinha3: e.target.value })
-                      }
-                    />
+                    <label className={labelCls}>Cabeçalho do documento</label>
+                    {/* Prévia das 5 linhas, exatamente como saem no RVN */}
+                    <div className="rounded-xl border border-line bg-cream/70 px-3 py-2.5 text-center">
+                      {cabecalhoEmLinhas(profile).map((l, i) => (
+                        <p
+                          key={i}
+                          className="text-[11px] font-bold leading-snug text-ink"
+                          style={{
+                            fontFamily:
+                              '"Times New Roman", "Liberation Serif", Times, serif',
+                          }}
+                        >
+                          {i === 4 ? `“${semAspasExternas(l)}”` : l}
+                        </p>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-ink-soft">
+                      Linha em branco volta ao padrão do Batalhão ao salvar.
+                    </p>
                   </div>
-                  <div className="col-span-2">
-                    <label className={labelCls}>
-                      Cabeçalho — linha 5 (nome histórico)
-                    </label>
-                    <input
-                      className={inputCls}
-                      placeholder="Ex.: BATALHÃO VISCONDE DA PARNAÍBA"
-                      value={profile.orgLinha5}
-                      onChange={(e) =>
-                        setProfile({ ...profile, orgLinha5: e.target.value })
-                      }
-                    />
-                  </div>
+                  {(["orgLinha3", "orgLinha4", "orgLinha5"] as const).map(
+                    (key) => (
+                      <div key={key} className="col-span-2">
+                        <label className={labelCls}>
+                          {ORG_LINHAS_LABEL[key]}
+                        </label>
+                        <input
+                          className={inputCls}
+                          placeholder={ORG_LINHAS_PADRAO[key]}
+                          value={profile[key]}
+                          onChange={(e) =>
+                            setProfile({ ...profile, [key]: e.target.value })
+                          }
+                        />
+                      </div>
+                    ),
+                  )}
                 </div>
                 <div className="px-5 pb-4">
                   <button
