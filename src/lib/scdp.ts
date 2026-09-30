@@ -7,13 +7,6 @@ import {
 } from "@/lib/format";
 
 /**
- * Limite de texto que o favorito "Capturar do SCDP" consegue mandar pela URL
- * (URLs muito longas são recusadas pelos navegadores). Seleções maiores também
- * vão para a área de transferência, e o editor avisa para usar o botão "Colar".
- */
-export const LIMITE_CAPTURA_URL = 6000;
-
-/**
  * Campos do RVN que o parser consegue extrair do texto copiado das telas do
  * SCDP ("Informações da Viagem", "Roteiro da Viagem" e "Quadro de
  * Totalizações"). Tudo é opcional: importa-se o que for reconhecido.

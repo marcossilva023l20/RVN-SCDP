@@ -254,12 +254,3 @@ export function tituloAutomatico(titulo: string): boolean {
     /^PCDP\b/i.test(t)
   );
 }
-
-/** "RVN — PCDP 038577-26.pdf" (sem acentos/caracteres proibidos em arquivo). */
-export function nomeArquivoPdf(pcdpNumero?: string, nome?: string): string {
-  const partes = ["RVN"];
-  if (pcdpNumero?.trim()) partes.push(`PCDP ${pcdpNumero.trim()}`);
-  else if (nome?.trim()) partes.push(nome.trim());
-  else partes.push("Relatorio de Viagem");
-  return `${partes.join(" — ").replace(/[/\\:*?"<>|]/g, "-").replace(/\s+/g, " ")}.pdf`;
-}

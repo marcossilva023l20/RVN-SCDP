@@ -17,7 +17,6 @@ import {
 import {
   formataMoeda,
   montaLocalData,
-  nomeArquivoPdf,
   parseMoeda,
   valorPorExtenso,
 } from "@/lib/format";
@@ -27,9 +26,9 @@ import {
   TIPOS_BENEFICIARIO,
   type ReportDraft,
 } from "@/lib/types";
-import { parseScdp, CHAVES_IMPORT_SCDP, LIMITE_CAPTURA_URL } from "@/lib/scdp";
+import { parseScdp, CHAVES_IMPORT_SCDP } from "@/lib/scdp";
 import { BotaoGerarPdf } from "@/components/botao-pdf";
-
+import { nomeArquivoPdf } from "@/lib/pdf";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -220,14 +219,7 @@ const CAMPOS_OBRIGATORIOS: Array<[keyof ReportDraft, string]> = [
   ["localData", "Local e data"],
 ];
 
-export function EditorClient({
-  initial,
-  textoInicial = "",
-}: {
-  initial: ReportDraft;
-  /** texto do SCDP capturado pelo favorito, já pronto para conferir */
-  textoInicial?: string;
-}) {
+export function EditorClient({ initial }: { initial: ReportDraft }) {
   const router = useRouter();
   const [draft, setDraft] = useState<ReportDraft>(initial);
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">(
@@ -348,27 +340,8 @@ export function EditorClient({
     });
 
   /* ---- Importar do SCDP (texto colado) ---- */
-  // O favorito "Capturar do SCDP" entrega o texto selecionado já nesta caixa
-  // (chega pela URL e é lido no servidor, sem piscar na tela).
-  const [textoScdp, setTextoScdp] = useState(textoInicial);
-  const [resumoImport, setResumoImport] = useState(() => {
-    if (!textoInicial) return "";
-    // Seleção maior que o limite da URL: o texto completo está na área de
-    // transferência — basta usar o botão "Colar".
-    if (textoInicial.length >= LIMITE_CAPTURA_URL) {
-      return "Texto capturado do SCDP (a seleção era grande e veio até o limite do favorito). Clique em “Colar” para trazer o texto completo e depois em “Preencher campos”.";
-    }
-    return "Texto capturado do SCDP. Confira e clique em “Preencher campos”.";
-  });
-
-  // Depois de receber o texto, limpa a URL (o texto já está na caixa).
-  useEffect(() => {
-    if (!textoInicial) return;
-    const url = new URL(window.location.href);
-    if (!url.searchParams.has("t")) return;
-    url.searchParams.delete("t");
-    window.history.replaceState(null, "", url.toString());
-  }, [textoInicial]);
+  const [textoScdp, setTextoScdp] = useState("");
+  const [resumoImport, setResumoImport] = useState("");
 
   const importarScdp = () => {
     const importado = parseScdp(textoScdp);
@@ -431,25 +404,6 @@ export function EditorClient({
     }
     setResumoImport(`${resumo} Revise horas e complete o que faltar.`);
     upd(patch);
-  };
-
-  /** Traz para a caixa o texto que ficou na área de transferência. */
-  const colarDaAreaDeTransferencia = async () => {
-    try {
-      const texto = await navigator.clipboard.readText();
-      if (!texto.trim()) {
-        setResumoImport("A área de transferência está vazia.");
-        return;
-      }
-      setTextoScdp(texto);
-      setResumoImport(
-        "Texto colado da área de transferência. Confira e clique em “Preencher campos”.",
-      );
-    } catch {
-      setResumoImport(
-        "O navegador não liberou a área de transferência — use Ctrl+V na caixa acima.",
-      );
-    }
   };
 
   const updBilhetes = (tipo: string) => (rows: BilheteRow[]) =>
@@ -588,7 +542,7 @@ export function EditorClient({
               <Trash2 className="h-4 w-4" />
             </button>
             <BotaoGerarPdf
-              draft={draft}
+              obterAlvo={() => paperRef.current}
               nomeArquivo={nomeArquivoPdf(draft.pcdpNumero, draft.nome)}
               className="flex items-center gap-2 rounded-lg border border-[#8fb99d]/40 bg-[#8fb99d]/10 px-3.5 py-2 text-[12.5px] font-bold text-[#c9e6d2] transition-colors hover:bg-[#8fb99d]/20 disabled:opacity-60"
             />
@@ -617,7 +571,7 @@ export function EditorClient({
               num="0"
               title="Importar do SCDP (colar texto)"
               icon={ClipboardPaste}
-              defaultOpen={!!textoInicial}
+              defaultOpen={false}
             >
               <p className="-mt-1 text-[12px] leading-relaxed text-[#7e9789]">
                 No SCDP, selecione e copie as seções{" "}
@@ -641,27 +595,15 @@ export function EditorClient({
                 placeholder="Cole aqui o texto copiado do SCDP…"
                 rows={5}
               />
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={importarScdp}
-                  disabled={!textoScdp.trim()}
-                  className="flex items-center gap-1.5 rounded-lg bg-[#7ba889]/20 px-3 py-2 text-[12px] font-semibold text-[#c9e6d2] transition-colors hover:bg-[#7ba889]/30 disabled:opacity-40"
-                >
-                  <Wand2 className="h-3.5 w-3.5" />
-                  Preencher campos
-                </button>
-                {/* Reforço para seleções grandes: o favorito também deixa a
-                    cópia completa na área de transferência. */}
-                <button
-                  type="button"
-                  onClick={colarDaAreaDeTransferencia}
-                  className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-[12px] font-semibold text-[#cfe0d5] transition-colors hover:bg-white/[0.06]"
-                >
-                  <ClipboardPaste className="h-3.5 w-3.5" />
-                  Colar
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={importarScdp}
+                disabled={!textoScdp.trim()}
+                className="flex items-center gap-1.5 rounded-lg bg-[#7ba889]/20 px-3 py-2 text-[12px] font-semibold text-[#c9e6d2] transition-colors hover:bg-[#7ba889]/30 disabled:opacity-40"
+              >
+                <Wand2 className="h-3.5 w-3.5" />
+                Preencher campos
+              </button>
               {resumoImport && (
                 <p className="text-[12px] leading-relaxed text-[#a9cfba]">
                   {resumoImport}

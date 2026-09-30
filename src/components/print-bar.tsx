@@ -1,18 +1,15 @@
 "use client";
 
 import { BotaoGerarPdf } from "@/components/botao-pdf";
-import type { ReportDraft } from "@/lib/types";
 import { ArrowLeft, Printer } from "lucide-react";
 import Link from "next/link";
 
 export function PrintBar({
   id,
-  draft,
   nomeArquivo,
 }: {
   id: number;
-  draft: ReportDraft;
-  nomeArquivo: string;
+  nomeArquivo?: string;
 }) {
   return (
     <div className="no-print fixed inset-x-0 top-0 z-50 border-b border-ink/10 bg-cream/90 backdrop-blur">
@@ -29,8 +26,8 @@ export function PrintBar({
         </p>
         <div className="flex items-center gap-2">
           <BotaoGerarPdf
-            draft={draft}
-            nomeArquivo={nomeArquivo}
+            obterAlvo={() => document.getElementById("rvn-paper")}
+            nomeArquivo={nomeArquivo ?? "Relatorio de Viagem.pdf"}
             rotulo="Gerar PDF"
             className="flex items-center gap-2 rounded-full border border-pine/30 bg-white px-4 py-2.5 text-sm font-semibold text-pine transition-colors hover:bg-pine/5 disabled:opacity-60"
           />

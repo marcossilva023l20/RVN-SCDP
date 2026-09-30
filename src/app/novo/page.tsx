@@ -4,7 +4,7 @@ import { Loader2, PlaneTakeoff } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { tituloPadrao } from "@/lib/format";
-import { parseScdp } from "@/lib/scdp";
+import { CHAVES_IMPORT_SCDP, parseScdp } from "@/lib/scdp";
 
 function NovoInner() {
   const router = useRouter();
@@ -18,13 +18,40 @@ function NovoInner() {
     const pcdp = params.get("pcdp") ?? "";
     const trecho = (params.get("t") ?? "").trim();
     // Texto copiado no SCDP: extrai PCDP, datas, itinerário, evento, diárias…
-    // O parser aqui serve só para o título/nº da PCDP: o texto completo vai
-    // para a caixa "Importar do SCDP" do editor, onde você confere e aplica.
     const importado = parseScdp(trecho);
+    // Se o parser não reconheceu a descrição, guarda o texto bruto só quando
+    // ele *é* uma descrição (texto curto, sem seções do SCDP) — assim o campo
+    // "Evento" nunca recebe o bloco de bilhetes/roteiro colado.
+    const trechoEhOutraSecao =
+      trecho.length > 400 ||
+      /BILHETES|ROTEIRO DA VIAGEM|INFORMA[ÇC][ÕO]ES DA VIAGEM|QUADRO DE TOTALIZA|C[óo]digo da Reserva|Tarifa|DADOS ATUALIZADOS/i.test(
+        trecho,
+      );
     const body: Record<string, unknown> = {
+      // O servidor também ajusta no POST; aqui já sai certo na tela.
       titulo: tituloPadrao(importado.pcdpNumero ?? pcdp, importado.nome),
       pcdpNumero: importado.pcdpNumero ?? pcdp,
+      eventoDescricao:
+        importado.eventoDescricao || (trechoEhOutraSecao ? "" : trecho),
     };
+    for (const chave of CHAVES_IMPORT_SCDP) {
+      const v = importado[chave];
+      if (v) body[chave] = v;
+    }
+    // Bilhetes a prestar contas (seções 8/9), quando copiados.
+    if (importado.bilhetes?.length) {
+      body.bilhetesCopia = importado.bilhetes.map((b, i) => ({
+        tipo: b.tipo,
+        localizador: b.localizador,
+        data: b.data,
+        trecho: b.trecho,
+        cia: b.cia,
+        voo: b.voo,
+        reserva: b.reserva,
+        horario: b.horario,
+        ordem: i,
+      }));
+    }
     (async () => {
       try {
         const res = await fetch("/api/reports", {
@@ -33,17 +60,11 @@ function NovoInner() {
           body: JSON.stringify(body),
         });
         const { id } = (await res.json()) as { id: number };
-        // O texto selecionado segue pela URL e cai direto na caixa
-        // "Importar do SCDP (colar texto)" do editor.
-        const alvo = trecho
-          ? `/relatorios/${id}?t=${encodeURIComponent(trecho)}`
-          : `/relatorios/${id}`;
-        router.replace(alvo);
+        router.replace(`/relatorios/${id}`);
       } catch {
         setErro("Não foi possível criar o relatório. Tente novamente.");
       }
     })();
-
   }, [params, router]);
 
   return (
