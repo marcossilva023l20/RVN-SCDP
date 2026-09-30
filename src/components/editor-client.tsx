@@ -516,7 +516,10 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
                 <strong className="text-[#a9bcae]">Roteiro da Viagem</strong> e{" "}
                 <strong className="text-[#a9bcae]">Quadro de Totalizações</strong>.
                 Cole abaixo: o app preenche nº do PCDP, datas, itinerário,
-                evento e diárias. Só o que for reconhecido é alterado.
+                evento, diárias e — da aba{" "}
+                <strong className="text-[#a9bcae]">Dados Atualizados</strong> —
+                CPF, RG, e-mail e dados bancários. Só o que for reconhecido é
+                alterado.
               </p>
               <TextArea
                 value={textoScdp}

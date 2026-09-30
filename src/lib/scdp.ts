@@ -10,6 +10,12 @@ export interface ScdpImport {
   pcdpData?: string;
   nome?: string;
   tipoBeneficiario?: string;
+  cpf?: string;
+  identidade?: string;
+  email?: string;
+  banco?: string;
+  agencia?: string;
+  conta?: string;
   idaDataHora?: string;
   voltaDataHora?: string;
   itinerario?: string;
@@ -27,6 +33,12 @@ export const CHAVES_IMPORT_SCDP = [
   "pcdpData",
   "nome",
   "tipoBeneficiario",
+  "cpf",
+  "identidade",
+  "email",
+  "banco",
+  "agencia",
+  "conta",
   "idaDataHora",
   "voltaDataHora",
   "itinerario",
@@ -81,6 +93,52 @@ export function parseScdp(bruto: string): ScdpImport {
 
   const mTipo = t.match(/Tipo de Proposto:\s*\n?\s*([^\n]+)/i);
   if (mTipo && /militar/i.test(mTipo[1])) out.tipoBeneficiario = "militar";
+
+  /* ----- Dados do Proposto (aba "Dados Atualizados") ----- */
+  // Valor até a quebra de linha; "---" (sem dado) é ignorado.
+  const pega = (re: RegExp): string => {
+    const v = (t.match(re)?.[1] ?? "").replace(/\s+/g, " ").trim();
+    return v && !/^-+$/.test(v) ? v : "";
+  };
+
+  if (!out.nome) {
+    const n = pega(/\bNome:\s*\n?\s*([^\n]+)/i).split(
+      /\s+(?:Matr[íi]cula|CPF|RG|E-?mail|Telefone)\s*[^:\n]*:/i,
+    )[0];
+    if (n.trim()) out.nome = n.trim();
+  }
+  if (!out.tipoBeneficiario && /PROPOSTO\s*\(\s*MILITAR/i.test(t)) {
+    out.tipoBeneficiario = "militar";
+  }
+
+  const cpf = pega(/\bCPF:\s*\n?\s*([0-9][0-9.-]+)/i);
+  if (cpf) out.cpf = cpf;
+
+  const rg = pega(/\bRG:\s*\n?\s*([0-9A-Za-z-]+)/i);
+  if (rg) out.identidade = rg;
+
+  const email = pega(/\bE-?mail:\s*\n?\s*([^\s@]+@[^\s@]+)/i);
+  if (email) out.email = email;
+
+  /* ----- Dados para depósito das diárias ----- */
+  const bancoRaw = pega(/\bBanco:\s*\n?\s*([^\n]+)/i);
+  if (bancoRaw) {
+    out.banco = /^0*1$/.test(bancoRaw) ? "Banco do Brasil" : bancoRaw;
+  }
+
+  const agencia = pega(/\bAg[êe]ncia:\s*\n?\s*([0-9A-Za-z-]+)/i);
+  if (agencia) out.agencia = agencia;
+
+  const contaRaw = pega(/\bConta \(com DV\):\s*\n?\s*([0-9-]+)/i);
+  if (contaRaw) {
+    let c = contaRaw;
+    if (!c.includes("-")) {
+      // "000000000000000140589" -> tira os zeros à esquerda -> "14058-9"
+      c = c.replace(/^0+(?=\d)/, "");
+      if (c.length > 1) c = `${c.slice(0, -1)}-${c.slice(-1)}`;
+    }
+    out.conta = c;
+  }
 
   const mPeriodo = t.match(
     new RegExp(`Per[íi]odo da Viagem:\\s*(${DATA})\\s+a\\s+(${DATA})`, "i"),
