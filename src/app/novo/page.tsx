@@ -3,6 +3,7 @@
 import { Loader2, PlaneTakeoff } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { guardarCaptura, lerCaptura } from "@/lib/captura";
 import { tituloPadrao } from "@/lib/format";
 import { CHAVES_IMPORT_SCDP, parseScdp } from "@/lib/scdp";
 
@@ -16,7 +17,10 @@ function NovoInner() {
     if (started.current) return;
     started.current = true;
     const pcdp = params.get("pcdp") ?? "";
-    const trecho = (params.get("t") ?? "").trim();
+    // Captura do favorito: o texto chega pela sessionStorage (POST, sem o
+    // limite de tamanho das URLs). O `?t=` continua valendo para links antigos.
+    const captura = params.get("captura") === "1";
+    const trecho = (captura ? lerCaptura() : (params.get("t") ?? "")).trim();
     // Texto copiado no SCDP: extrai PCDP, datas, itinerário, evento, diárias…
     const importado = parseScdp(trecho);
     // Se o parser não reconheceu a descrição, guarda o texto bruto só quando
@@ -60,7 +64,12 @@ function NovoInner() {
           body: JSON.stringify(body),
         });
         const { id } = (await res.json()) as { id: number };
-        router.replace(`/relatorios/${id}`);
+        // O editor lê a captura da sessionStorage para preencher a caixa
+        // "Importar do SCDP (colar texto)"; o `?t=` entra pelo mesmo caminho.
+        if (trecho && !captura) guardarCaptura(trecho);
+        router.replace(
+          `/relatorios/${id}${trecho ? "?captura=1" : ""}`,
+        );
       } catch {
         setErro("Não foi possível criar o relatório. Tente novamente.");
       }

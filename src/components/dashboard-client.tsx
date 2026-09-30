@@ -122,7 +122,12 @@ export function DashboardClient({
 
   const bookmarklet = useMemo(() => {
     if (!origin) return "#";
-    const code = `(function(){var t=(window.getSelection?window.getSelection().toString():'')||'';var m=t.match(/\\d{4,7}\\s*\\/\\s*\\d{2,4}/);window.open('${origin}/novo?'+(m?('pcdp='+encodeURIComponent(m[0].replace(/\\s/g,''))):'')+'&t='+encodeURIComponent(t.slice(0,6000)),'_blank');})()`;
+    // A seleção vai por POST (formulário) para /api/captura: o texto inteiro
+    // cabe no corpo da requisição — sem o limite de tamanho das URLs. A rota
+    // entrega o texto ao editor (caixa "Importar do SCDP (colar texto)").
+    // O favorito também copia a seleção para a área de transferência, que é
+    // o caminho de reserva caso o formulário não possa ser enviado.
+    const code = `(function(){var t=(window.getSelection?window.getSelection().toString():'')||'';try{if(t&&navigator.clipboard)navigator.clipboard.writeText(t)}catch(e){}try{var f=document.createElement('form');f.method='POST';f.action='${origin}/api/captura';f.target='_blank';f.style.cssText='display:none';var a=document.createElement('input');a.type='hidden';a.name='t';a.value=t;f.appendChild(a);(document.body||document.documentElement).appendChild(f);f.submit();setTimeout(function(){try{f.remove()}catch(e){}},15000)}catch(e){window.open('${origin}/novo?captura=1','_blank')}})()`;
     return `javascript:${code}`;
   }, [origin]);
 

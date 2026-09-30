@@ -28,6 +28,7 @@ import {
 } from "@/lib/types";
 import { parseScdp, CHAVES_IMPORT_SCDP } from "@/lib/scdp";
 import { BotaoGerarPdf } from "@/components/botao-pdf";
+import { lerCaptura, limparCaptura } from "@/lib/captura";
 import { nomeArquivoPdf } from "@/lib/pdf";
 import {
   ArrowLeft,
@@ -47,7 +48,6 @@ import {
   MapPin,
   PenLine,
   Plane,
-  Printer,
   Plus,
   RotateCcw,
   Sparkles,
@@ -64,6 +64,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
@@ -78,6 +79,7 @@ function EditorSection({
   children,
   defaultOpen = true,
   done = false,
+  abreSozinha = false,
 }: {
   num: string;
   title: string;
@@ -85,13 +87,18 @@ function EditorSection({
   children: ReactNode;
   defaultOpen?: boolean;
   done?: boolean;
+  /** abre a seção quando o conteúdo chega (ex.: captura do SCDP) */
+  abreSozinha?: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  // `abertaManual` nulo = ainda no automático (a seção pode abrir sozinha
+  // quando `abreSozinha` liga); a partir do primeiro clique, vale a escolha.
+  const [abertaManual, setAbertaManual] = useState<boolean | null>(null);
+  const open = abertaManual ?? (defaultOpen || abreSozinha);
   return (
     <section className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.035] shadow-sm backdrop-blur-sm">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setAbertaManual(!open)}
         className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-white/[0.04]"
       >
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7ba889]/15 font-display text-[13px] font-bold text-[#a9cfba]">
@@ -219,7 +226,17 @@ const CAMPOS_OBRIGATORIOS: Array<[keyof ReportDraft, string]> = [
   ["localData", "Local e data"],
 ];
 
-export function EditorClient({ initial }: { initial: ReportDraft }) {
+export function EditorClient({
+  initial,
+  textoInicial = "",
+  capturaScdp = false,
+}: {
+  initial: ReportDraft;
+  /** texto vindo pela URL (links antigos do favorito) */
+  textoInicial?: string;
+  /** a captura do SCDP está na sessionStorage e deve cair na caixa */
+  capturaScdp?: boolean;
+}) {
   const router = useRouter();
   const [draft, setDraft] = useState<ReportDraft>(initial);
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">(
@@ -340,8 +357,51 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
     });
 
   /* ---- Importar do SCDP (texto colado) ---- */
-  const [textoScdp, setTextoScdp] = useState("");
+  // A captura do favorito chega pela sessionStorage (POST, sem o limite de
+  // tamanho das URLs). O snapshot só existe no navegador, então o HTML do
+  // servidor continua igual e a caixa se preenche logo depois da hidratação.
+  const assinarNada = useCallback(() => () => {}, []);
+  const textoCapturado = useSyncExternalStore(
+    assinarNada,
+    () => (capturaScdp ? lerCaptura() : ""),
+    () => "",
+  );
+  // O texto da caixa: o que a pessoa digitou/colou ou o que veio da captura.
+  const [textoDigitado, setTextoDigitado] = useState<string | null>(null);
+  const textoScdp = textoDigitado ?? (textoCapturado || textoInicial);
   const [resumoImport, setResumoImport] = useState("");
+
+  // Ao sair do editor a captura já cumpriu o papel (o texto permanece na caixa
+  // durante toda a edição) — aí sim ela é descartada da sessionStorage.
+  useEffect(() => {
+    if (!capturaScdp || !textoCapturado) return;
+    return () => limparCaptura();
+  }, [capturaScdp, textoCapturado]);
+
+  /** Traz para a caixa o texto que ficou na área de transferência. */
+  const colarDaAreaDeTransferencia = async () => {
+    try {
+      const texto = await navigator.clipboard.readText();
+      if (!texto.trim()) {
+        setResumoImport("A área de transferência está vazia.");
+        return;
+      }
+      setTextoDigitado(texto);
+      setResumoImport(
+        "Texto colado da área de transferência. Confira e clique em “Preencher campos”.",
+      );
+    } catch {
+      setResumoImport(
+        "O navegador não liberou a área de transferência — use Ctrl+V na caixa acima.",
+      );
+    }
+  };
+
+  const avisoCaptura = textoCapturado && !textoDigitado
+    ? `Texto capturado do SCDP (${textoCapturado.length.toLocaleString("pt-BR")} caracteres). Confira e clique em “Preencher campos”.`
+    : !textoCapturado && textoInicial && !textoDigitado
+      ? "Texto do SCDP carregado na caixa. Confira e clique em “Preencher campos”."
+      : "";
 
   const importarScdp = () => {
     const importado = parseScdp(textoScdp);
@@ -546,15 +606,18 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
               nomeArquivo={nomeArquivoPdf(draft.pcdpNumero, draft.nome)}
               className="flex items-center gap-2 rounded-lg border border-[#8fb99d]/40 bg-[#8fb99d]/10 px-3.5 py-2 text-[12.5px] font-bold text-[#c9e6d2] transition-colors hover:bg-[#8fb99d]/20 disabled:opacity-60"
             />
-            <a
-              href={`/relatorios/${reportId}/imprimir`}
-              target="_blank"
-              onClick={() => void doSave(draft)}
-              className="flex items-center gap-2 rounded-lg bg-[#8fb99d] px-4 py-2 text-[12.5px] font-bold text-[#0d150f] transition-all hover:bg-[#a9cfba] active:scale-[0.98]"
-            >
-              <Printer className="h-4 w-4" />
-              Imprimir / PDF
-            </a>
+            {/* Imprimir = MESMO documento do "Gerar PDF": o PDF é montado
+                uma vez e, em vez de baixar, abre já com a ordem de impressão
+                (o papel sai igual ao arquivo). Salva antes, para o registro
+                ficar com o que está na tela. */}
+            <BotaoGerarPdf
+              modo="imprimir"
+              obterAlvo={() => paperRef.current}
+              nomeArquivo={nomeArquivoPdf(draft.pcdpNumero, draft.nome)}
+              antes={() => doSave(draft)}
+              rotulo="Imprimir"
+              className="flex items-center gap-2 rounded-lg bg-[#8fb99d] px-4 py-2 text-[12.5px] font-bold text-[#0d150f] transition-all hover:bg-[#a9cfba] active:scale-[0.98] disabled:opacity-60"
+            />
           </div>
         </div>
       </header>
@@ -572,6 +635,7 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
               title="Importar do SCDP (colar texto)"
               icon={ClipboardPaste}
               defaultOpen={false}
+              abreSozinha={Boolean(textoScdp)}
             >
               <p className="-mt-1 text-[12px] leading-relaxed text-[#7e9789]">
                 No SCDP, selecione e copie as seções{" "}
@@ -591,22 +655,34 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
               </p>
               <TextArea
                 value={textoScdp}
-                onChange={setTextoScdp}
+                onChange={setTextoDigitado}
                 placeholder="Cole aqui o texto copiado do SCDP…"
                 rows={5}
               />
-              <button
-                type="button"
-                onClick={importarScdp}
-                disabled={!textoScdp.trim()}
-                className="flex items-center gap-1.5 rounded-lg bg-[#7ba889]/20 px-3 py-2 text-[12px] font-semibold text-[#c9e6d2] transition-colors hover:bg-[#7ba889]/30 disabled:opacity-40"
-              >
-                <Wand2 className="h-3.5 w-3.5" />
-                Preencher campos
-              </button>
-              {resumoImport && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={importarScdp}
+                  disabled={!textoScdp.trim()}
+                  className="flex items-center gap-1.5 rounded-lg bg-[#7ba889]/20 px-3 py-2 text-[12px] font-semibold text-[#c9e6d2] transition-colors hover:bg-[#7ba889]/30 disabled:opacity-40"
+                >
+                  <Wand2 className="h-3.5 w-3.5" />
+                  Preencher campos
+                </button>
+                {/* Reforço: o favorito também deixa a seleção completa na área
+                    de transferência. */}
+                <button
+                  type="button"
+                  onClick={colarDaAreaDeTransferencia}
+                  className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-[12px] font-semibold text-[#cfe0d5] transition-colors hover:bg-white/[0.06]"
+                >
+                  <ClipboardPaste className="h-3.5 w-3.5" />
+                  Colar
+                </button>
+              </div>
+              {(resumoImport || avisoCaptura) && (
                 <p className="text-[12px] leading-relaxed text-[#a9cfba]">
-                  {resumoImport}
+                  {resumoImport || avisoCaptura}
                 </p>
               )}
             </EditorSection>
@@ -1058,7 +1134,8 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
             </EditorSection>
 
             <p className="px-1 pb-6 text-center text-[11px] leading-relaxed text-[#5f7165]">
-              Ao imprimir, o documento é gerado em A4 no formato oficial.
+              “Gerar PDF” baixa o documento e “Imprimir” abre esse mesmo
+              documento pronto para impressão, em A4 no formato oficial.
               <br />
               Anexe o PDF assinado à prestação de contas no SCDP.
             </p>

@@ -64,15 +64,37 @@ export function nomeArquivoPdf(pcdpNumero?: string, nome?: string): string {
   return `${partes.join(" — ").replace(/[/\\:*?"<>|]/g, "-").replace(/\s+/g, " ")}.pdf`;
 }
 
+/** "baixar" salva o arquivo; "imprimir" abre o MESMO PDF pronto para impressão. */
+export type ModoPdf = "baixar" | "imprimir";
+
 /**
- * Renderiza `alvo` e baixa um PDF A4 com o documento paginado.
+ * Renderiza `alvo` e monta o PDF A4 com o documento paginado.
+ *
+ * O documento é sempre o mesmo: em "baixar" o arquivo é salvo; em "imprimir"
+ * ele abre no visualizador do navegador já com a ordem de impressão — ou
+ * seja, o papel sai idêntico ao arquivo do botão "Gerar PDF".
+ *
  * @param alvo elemento do documento (normalmente o `.rvn-paper`)
- * @param nomeArquivo nome do arquivo baixado (com .pdf)
+ * @param nomeArquivo nome do arquivo (com .pdf)
+ * @param modo baixar (padrão) ou imprimir
  */
 export async function gerarPdfA4(
   alvo: HTMLElement,
   nomeArquivo: string,
+  modo: ModoPdf = "baixar",
 ): Promise<void> {
+  // Na impressão a aba é aberta AQUI, ainda dentro do clique: os navegadores
+  // só deixam abrir janelas durante a ação do usuário, e a montagem do PDF
+  // leva alguns instantes. A aba mostra um aviso enquanto isso.
+  const janela = modo === "imprimir" ? window.open("", "_blank") : null;
+  if (janela) {
+    janela.document.title = "Preparando o documento…";
+    janela.document.body.style.cssText =
+      "margin:0;height:100vh;display:flex;align-items:center;justify-content:center;" +
+      "background:#0d150f;color:#edf2ee;font:15px system-ui,-apple-system,sans-serif";
+    janela.document.body.textContent = "Montando o documento para impressão…";
+  }
+
   const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
     import("jspdf"),
     import("html2canvas-pro"),
@@ -193,7 +215,20 @@ export async function gerarPdfA4(
       );
     });
 
-    pdf.save(nomeArquivo);
+    if (modo === "imprimir") {
+      // `autoPrint` embute no PDF a ordem de imprimir: o navegador carrega o
+      // documento (o mesmo do "Gerar PDF") já mostrando o diálogo de impressão.
+      pdf.autoPrint();
+      const endereco = String(pdf.output("bloburl"));
+      if (janela) janela.location.replace(endereco);
+      // Pop-up bloqueado: entrega o arquivo para não perder o documento.
+      else pdf.save(nomeArquivo);
+    } else {
+      pdf.save(nomeArquivo);
+    }
+  } catch (erro) {
+    janela?.close();
+    throw erro;
   } finally {
     folha.remove();
   }
