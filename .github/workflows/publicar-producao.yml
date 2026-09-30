@@ -53,4 +53,5 @@ jobs:
 
       - name: Avisar a Vercel (só se o secret VERCEL_DEPLOY_HOOK existir)
         if: env.VERCEL_DEPLOY_HOOK != ''
-        run: curl -sS -X POST "$VERCEL_DEPLOY_HOOK" -o /dev/null -w "deploy hook: HTTP %{http_code}\n"
+        run: |
+          curl -sS -X POST "$VERCEL_DEPLOY_HOOK" -o /dev/null -w "deploy hook: HTTP %{http_code}\n"
