@@ -81,13 +81,14 @@ const DATA = "[0-9]{2}/[0-9]{2}/[0-9]{4}";
  *
  * - \p{L} (flag "u") aceita acentos em toda a palavra: com \w, "São Luís"
  *   era lido como "ís";
- * - cada palavra é ancorada (iniciais maiúsculas, ou conector curto tipo
- *   "de/do/dos") e números longos (nº do bilhete/voo) quebram a sequência —
- *   sem isso o regex "engolia" tudo até o parêntese da cidade.
+ * - cada palavra é ancorada (Title Case ou conector curto "de/do/dos"),
+ *   números longos (nº do bilhete/voo) e palavras em CAIXA ALTA
+ *   ("LTDA", "SOARES", "AGENCIA") quebram a sequência — sem isso o regex
+ *   "engolia" tudo até o parêntese da cidade.
  */
 const PALAVRA_CIDADE =
-  "(?![\\p{L}\\p{N}.'/-]*\\d{5})[A-ZÀ-Þ][\\p{L}\\p{N}.'/-]*";
-const CONECTOR_CIDADE = "[a-zà-ÿ]{1,4}";
+  "(?<![\\p{L}])(?![A-ZÀ-Þ]{2})(?![\\p{L}\\p{N}.'/-]*\\d{5})[A-ZÀ-Þ][\\p{L}\\p{N}.'/-]*";
+const CONECTOR_CIDADE = "(?<![\\p{L}])[a-zà-ÿ]{1,4}";
 const CIDADE = `((?:${PALAVRA_CIDADE})(?:\\s+(?:${PALAVRA_CIDADE}|${CONECTOR_CIDADE})){0,6}\\s*\\(\\s*[A-Z]{2}\\s*\\))`;
 
 const limpaCidade = (c: string) =>
@@ -218,12 +219,14 @@ export function parseScdp(bruto: string): ScdpImport {
     d2: string;
     tipo: string;
   }> = [];
+  // Sem a flag "i": ela anularia a regra de CAIXA ALTA dentro de CIDADE
+  // (com "i", `[A-ZÀ-Þ]{2}` também casaria "Pi").
   const reRoteiro = new RegExp(
     `${CIDADE}\\s+` + // origem
       `${CIDADE}\\s+` + // destino
-      `(${DATA})\\s+a\\s+(${DATA})\\s+` + // permanência do trecho
-      "(Trecho|Perman[êe]ncia|Retorno)",
-    "giu",
+      `(${DATA})\\s+[aA]\\s+(${DATA})\\s+` + // permanência do trecho
+      "([Tt]recho|[Pp]erman[êe]ncia|[Pp]ermanencia|[Rr]etorno)",
+    "gu",
   );
   for (const m of t.matchAll(reRoteiro)) {
     const [, origemRaw, destinoRaw, d1, d2, tipo] = m;
@@ -288,7 +291,9 @@ export function parseScdp(bruto: string): ScdpImport {
   if (evIni) out.eventoInicio = paraMilitar(evIni);
   if (evFim) out.eventoTermino = paraMilitar(evFim);
 
-  /* ----- Bilhetes a prestar contas (companhia mostra se foi aéreo/ônibus) --- */
+  /* ----- Bilhetes (tabela "a prestar contas" + detalhe do bilhete) --- */
+  const listaBilhetes: BilheteImport[] = [];
+
   const mSecBil = t.match(/BILHETES?\s+A\s+PRESTAR\s+CONTAS/i);
   if (mSecBil?.index !== undefined) {
     const inicio = mSecBil.index;
@@ -333,7 +338,6 @@ export function parseScdp(bruto: string): ScdpImport {
       });
     }
 
-    const lista: BilheteImport[] = [];
     let fimAnterior = 0;
     for (let i = 0; i < pares.length; i++) {
       const p = pares[i];
@@ -387,7 +391,7 @@ export function parseScdp(bruto: string): ScdpImport {
       );
       const data = mData?.[1] || doRoteiro?.d1 || "";
 
-      lista.push({
+      listaBilhetes.push({
         tipo: devolvido ? "nao_utilizado" : "utilizado",
         localizador,
         data: data ? paraMilitar(data) : "",
@@ -399,8 +403,104 @@ export function parseScdp(bruto: string): ScdpImport {
         modal: modalDaCia(cia),
       });
     }
-    if (lista.length) out.bilhetes = lista;
   }
+
+  /* ----- Detalhe do bilhete ("Código da Reserva") ----- */
+  // Quadro que o SCDP mostra ao clicar num trecho: nº da reserva, agência e as
+  // datas/horas de origem e destino. Casa com o bilhete da tabela anterior
+  // pelo trecho; sozinho, também cria as linhas.
+  if (/C[óo]digo da Reserva/i.test(t)) {
+    let plano = t;
+    for (const rotulo of [
+      "Código da Reserva",
+      "Companhia",
+      "Tarifa de Embarque",
+      "Tarifa",
+      "Tx. de Serviço",
+      "Situação do Bilhete",
+      "Agência de Viagem",
+      "Situação do Trajeto",
+      "Origem",
+      "Destino",
+    ]) {
+      plano = plano.replace(new RegExp(rotulo.replace(/ /g, "\\s+"), "gi"), " ");
+    }
+    plano = plano.replace(/\s+/g, " ").trim();
+
+    const reDet = new RegExp(
+      `${CIDADE}\\s*,\\s*(${DATA})\\s*([0-9]{1,2}:[0-9]{2})\\s+` +
+        `${CIDADE}\\s*,\\s*(${DATA})\\s*([0-9]{1,2}:[0-9]{2})`,
+      "gu",
+    );
+    let fim = 0;
+    for (const m of plano.matchAll(reDet)) {
+      const i = m.index ?? 0;
+      const cabeca = plano.slice(fim, i);
+      fim = i + m[0].length;
+
+      // Código da reserva: último token com letras E dígitos antes das
+      // tarifas (a companhia vem logo depois dele).
+      const mReserva = [
+        ...cabeca.matchAll(/\b(?=[A-Z0-9]*\d)(?=[A-Z0-9]*[A-Z])[A-Z0-9]{5,12}\b/g),
+      ].pop();
+      const reserva = mReserva?.[0] ?? "";
+      let cia = "";
+      if (mReserva?.index !== undefined) {
+        cia = cabeca.slice(mReserva.index + reserva.length).split(/R\$/)[0];
+      } else {
+        const mCia = cabeca
+          .split(/R\$/)[0]
+          .match(
+            /((?:[A-ZÀ-Þ][\p{L}\p{N}&.'-]*\s+){0,3}[A-ZÀ-Þ][\p{L}\p{N}&.'-]*)\s*$/u,
+          );
+        cia = mCia?.[1] ?? "";
+      }
+      cia = cia
+        .replace(/\b(Sim|N[ãa]o)\b/gi, " ")
+        .replace(/\b(?:emitido|devolvido|utilizado|cancelado)\b/gi, " ")
+        .replace(/[|;]+/g, " ")
+        .replace(/\s+/g, " ")
+        .replace(/^[\s.,-]+|[\s.,-]+$/g, "")
+        .trim();
+
+      // A "Situação do Bilhete" vem depois do "Emitido" do trajeto anterior.
+      const posEmitido = cabeca.toLowerCase().lastIndexOf("emitido");
+      const situacao = posEmitido >= 0 ? cabeca.slice(posEmitido + 7) : cabeca;
+      const devolvido = /devolv|n[ãa]o\s+utiliz|cancelad/i.test(situacao);
+
+      const origem = limpaCidade(m[1]);
+      const destino = limpaCidade(m[4]);
+      const data = paraMilitar(m[2]);
+      const horario = m[3];
+
+      const igual = listaBilhetes.find((b) => {
+        const [o, d] = b.trecho.split(" > ");
+        return mesmaCidade(o ?? "", origem) && mesmaCidade(d ?? "", destino);
+      });
+      if (igual) {
+        if (reserva) igual.reserva = reserva;
+        if (data) igual.data = data;
+        if (horario) igual.horario = horario;
+        if (!igual.cia) igual.cia = cia;
+        if (!igual.modal) igual.modal = modalDaCia(igual.cia);
+        if (devolvido) igual.tipo = "nao_utilizado";
+      } else {
+        listaBilhetes.push({
+          tipo: devolvido ? "nao_utilizado" : "utilizado",
+          localizador: "",
+          data,
+          trecho: `${origem} > ${destino}`,
+          cia,
+          voo: "",
+          reserva,
+          horario,
+          modal: modalDaCia(cia),
+        });
+      }
+    }
+  }
+
+  if (listaBilhetes.length) out.bilhetes = listaBilhetes;
 
   /* ----- Quadro de Totalizações ----- */
   const mDias = t.match(/N[úu]mero de Di[áa]rias\s*\n?\s*([0-9]+(?:[.,][0-9]+)?)/i);
