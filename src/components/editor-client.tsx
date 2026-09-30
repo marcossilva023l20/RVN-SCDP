@@ -429,25 +429,6 @@ export function EditorClient({
     upd(patch);
   };
 
-  /** Traz para a caixa o texto que ficou na área de transferência. */
-  const colarDaAreaDeTransferencia = async () => {
-    try {
-      const texto = await navigator.clipboard.readText();
-      if (!texto.trim()) {
-        setResumoImport("A área de transferência está vazia.");
-        return;
-      }
-      setTextoScdp(texto);
-      setResumoImport(
-        "Texto colado da área de transferência. Confira e clique em “Preencher campos”.",
-      );
-    } catch {
-      setResumoImport(
-        "O navegador não liberou a área de transferência — use Ctrl+V na caixa acima.",
-      );
-    }
-  };
-
   const updBilhetes = (tipo: string) => (rows: BilheteRow[]) =>
     upd({
       bilhetes: [
@@ -588,24 +569,15 @@ export function EditorClient({
               nomeArquivo={nomeArquivoPdf(draft.pcdpNumero, draft.nome)}
               className="flex items-center gap-2 rounded-lg border border-[#8fb99d]/40 bg-[#8fb99d]/10 px-3.5 py-2 text-[12.5px] font-bold text-[#c9e6d2] transition-colors hover:bg-[#8fb99d]/20 disabled:opacity-60"
             />
-            {/* Imprimir abre o MESMO PDF do botão "Gerar PDF" (documento
-                pronto, em A4) — assim o papel sai igual ao arquivo. Salva
-                antes, para o PDF refletir o que está na tela. */}
-            <button
-              type="button"
-              onClick={async () => {
-                await doSave(draft);
-                window.open(
-                  `/api/reports/${reportId}/pdf`,
-                  "_blank",
-                  "noopener",
-                );
-              }}
+            <a
+              href={`/relatorios/${reportId}/imprimir`}
+              target="_blank"
+              onClick={() => void doSave(draft)}
               className="flex items-center gap-2 rounded-lg bg-[#8fb99d] px-4 py-2 text-[12.5px] font-bold text-[#0d150f] transition-all hover:bg-[#a9cfba] active:scale-[0.98]"
             >
               <Printer className="h-4 w-4" />
-              Imprimir
-            </button>
+              Imprimir / PDF
+            </a>
           </div>
         </div>
       </header>
@@ -646,27 +618,15 @@ export function EditorClient({
                 placeholder="Cole aqui o texto copiado do SCDP…"
                 rows={5}
               />
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={importarScdp}
-                  disabled={!textoScdp.trim()}
-                  className="flex items-center gap-1.5 rounded-lg bg-[#7ba889]/20 px-3 py-2 text-[12px] font-semibold text-[#c9e6d2] transition-colors hover:bg-[#7ba889]/30 disabled:opacity-40"
-                >
-                  <Wand2 className="h-3.5 w-3.5" />
-                  Preencher campos
-                </button>
-                {/* Reforço para seleções grandes: o favorito também deixa a
-                    cópia completa na área de transferência. */}
-                <button
-                  type="button"
-                  onClick={colarDaAreaDeTransferencia}
-                  className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-[12px] font-semibold text-[#cfe0d5] transition-colors hover:bg-white/[0.06]"
-                >
-                  <ClipboardPaste className="h-3.5 w-3.5" />
-                  Colar
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={importarScdp}
+                disabled={!textoScdp.trim()}
+                className="flex items-center gap-1.5 rounded-lg bg-[#7ba889]/20 px-3 py-2 text-[12px] font-semibold text-[#c9e6d2] transition-colors hover:bg-[#7ba889]/30 disabled:opacity-40"
+              >
+                <Wand2 className="h-3.5 w-3.5" />
+                Preencher campos
+              </button>
               {resumoImport && (
                 <p className="text-[12px] leading-relaxed text-[#a9cfba]">
                   {resumoImport}
