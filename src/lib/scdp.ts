@@ -11,6 +11,23 @@ import {
  * SCDP ("Informações da Viagem", "Roteiro da Viagem" e "Quadro de
  * Totalizações"). Tudo é opcional: importa-se o que for reconhecido.
  */
+export type ModalBilhete = "aereo" | "rodoviario" | "";
+
+/** Uma linha da tabela "BILHETES A PRESTAR CONTAS" do SCDP. */
+export interface BilheteImport {
+  /** utilizado (canhotos, seção 9) ou nao_utilizado (devolvido, seção 8) */
+  tipo: "utilizado" | "nao_utilizado";
+  localizador: string; // Número do Bilhete
+  data: string; // Data do processamento (ou a permanência do trecho)
+  trecho: string; // "Origem > Destino"
+  cia: string; // Companhia de Transporte (GOL, Gontijo…)
+  voo: string; // Número do Voo (vazio quando 0/sem voo)
+  reserva: string;
+  horario: string;
+  /** aéreo ou rodoviário, deduzido da companhia (só informativo) */
+  modal: ModalBilhete;
+}
+
 export interface ScdpImport {
   pcdpNumero?: string;
   pcdpData?: string;
@@ -31,6 +48,7 @@ export interface ScdpImport {
   diariasDias?: string;
   diariasValor?: string;
   diariasExtenso?: string;
+  bilhetes?: BilheteImport[];
 }
 
 /** Chaves importáveis, na ordem em que são aplicadas no editor/POST. */
@@ -57,6 +75,43 @@ export const CHAVES_IMPORT_SCDP = [
 ] as const satisfies ReadonlyArray<keyof ScdpImport>;
 
 const DATA = "[0-9]{2}/[0-9]{2}/[0-9]{4}";
+
+/**
+ * "João Pessoa (PB)", "Crato (CE)", "São Luís (MA)"…
+ *
+ * - \p{L} (flag "u") aceita acentos em toda a palavra: com \w, "São Luís"
+ *   era lido como "ís";
+ * - cada palavra é ancorada (iniciais maiúsculas, ou conector curto tipo
+ *   "de/do/dos") e números longos (nº do bilhete/voo) quebram a sequência —
+ *   sem isso o regex "engolia" tudo até o parêntese da cidade.
+ */
+const PALAVRA_CIDADE =
+  "(?![\\p{L}\\p{N}.'/-]*\\d{5})[A-ZÀ-Þ][\\p{L}\\p{N}.'/-]*";
+const CONECTOR_CIDADE = "[a-zà-ÿ]{1,4}";
+const CIDADE = `((?:${PALAVRA_CIDADE})(?:\\s+(?:${PALAVRA_CIDADE}|${CONECTOR_CIDADE})){0,6}\\s*\\(\\s*[A-Z]{2}\\s*\\))`;
+
+const limpaCidade = (c: string) =>
+  c
+    .replace(/\s+/g, " ")
+    .replace(/\s*\(\s*/g, " (")
+    .replace(/\s*\)/g, ")")
+    .trim();
+
+const mesmaCidade = (a: string, b: string) =>
+  limpaCidade(a).toLowerCase() === limpaCidade(b).toLowerCase();
+
+/** Companhia de transporte -> aéreo ou rodoviário (só para o resumo). */
+function modalDaCia(cia: string): ModalBilhete {
+  if (/gol|latam|\btam\b|azul|avianca|voepass|passaredo|a[eé]re|air\s?lines/i.test(cia))
+    return "aereo";
+  if (
+    /gontijo|cometa|guanabara|itapemirim|[uú]til|reunidas|rodovi|expresso|[oô]nibus|bus/i.test(
+      cia,
+    )
+  )
+    return "rodoviario";
+  return "";
+}
 
 /** Tabs/espaços extras viram um espaço; quebras de linha são preservadas. */
 function normalizar(texto: string): string {
@@ -153,20 +208,29 @@ export function parseScdp(bruto: string): ScdpImport {
   /* ----- Roteiro da Viagem ----- */
   let ida = "";
   let volta = "";
-  let itinerario = "";
   let evIni = "";
   let evFim = "";
+  /** Todas as linhas do Roteiro (usadas no itinerário completo e nos bilhetes) */
+  const trechos: Array<{
+    origem: string;
+    destino: string;
+    d1: string;
+    d2: string;
+    tipo: string;
+  }> = [];
   const reRoteiro = new RegExp(
-    "([A-Za-zÀ-ú][\\w ./-]*?\\([A-Z]{2}\\))\\s+" + // origem
-      "([A-Za-zÀ-ú][\\w ./-]*?\\([A-Z]{2}\\))\\s+" + // destino
+    `${CIDADE}\\s+` + // origem
+      `${CIDADE}\\s+` + // destino
       `(${DATA})\\s+a\\s+(${DATA})\\s+` + // permanência do trecho
       "(Trecho|Perman[êe]ncia|Retorno)",
-    "gi",
+    "giu",
   );
   for (const m of t.matchAll(reRoteiro)) {
-    const [, origem, destino, d1, d2, tipo] = m;
-    if (/trecho/i.test(tipo) && !itinerario) {
-      itinerario = `${origem.trim()} > ${destino.trim()}`;
+    const [, origemRaw, destinoRaw, d1, d2, tipo] = m;
+    const origem = limpaCidade(origemRaw);
+    const destino = limpaCidade(destinoRaw);
+    trechos.push({ origem, destino, d1, d2, tipo });
+    if (/trecho/i.test(tipo) && !ida) {
       ida = d1;
     }
     if (/perman/i.test(tipo)) {
@@ -175,6 +239,19 @@ export function parseScdp(bruto: string): ScdpImport {
     }
     if (/retorno/i.test(tipo)) volta = volta || d1;
   }
+
+  // Itinerário completo: encadeia origem/destino de TODOS os trechos, sem
+  // repetir cidade (a linha de Permanência "X > X" não duplica).
+  const caminho: string[] = [];
+  for (const tr of trechos) {
+    if (!caminho.length || !mesmaCidade(caminho[caminho.length - 1], tr.origem)) {
+      caminho.push(tr.origem);
+    }
+    if (!mesmaCidade(caminho[caminho.length - 1], tr.destino)) {
+      caminho.push(tr.destino);
+    }
+  }
+  const itinerario = caminho.join(" > ");
 
   // "Início do trabalho" (data + hora reais) vira o início do evento em
   // formato militar, ex.: 21/07/2026 07:00 -> 210700JUL26
@@ -210,6 +287,120 @@ export function parseScdp(bruto: string): ScdpImport {
   if (volta) out.voltaDataHora = paraMilitar(volta);
   if (evIni) out.eventoInicio = paraMilitar(evIni);
   if (evFim) out.eventoTermino = paraMilitar(evFim);
+
+  /* ----- Bilhetes a prestar contas (companhia mostra se foi aéreo/ônibus) --- */
+  const mSecBil = t.match(/BILHETES?\s+A\s+PRESTAR\s+CONTAS/i);
+  if (mSecBil?.index !== undefined) {
+    const inicio = mSecBil.index;
+    const resto = t.slice(inicio);
+    // As duas tabelas (aérea e rodoviária) usam o mesmo título e ficam
+    // juntas; a seção termina na próxima tela conhecida.
+    const mFim = resto.match(
+      /\n\s*(?:INFORMA[ÇC][ÕO]ES DA VIAGEM|ROTEIRO DA VIAGEM|QUADRO DE TOTALIZA[ÇC][ÕO]ES|DADOS ATUALIZADOS|DADOS DO PROPOSTO)/i,
+    );
+    let bloco = resto.slice(0, mFim?.index ?? resto.length);
+    // Fora os títulos e os rótulos das colunas.
+    for (const rotulo of [
+      "BILHETES A PRESTAR CONTAS",
+      "Companhia de Transporte",
+      "Número do Bilhete",
+      "Situação do Bilhete",
+      "Data do Processamento",
+      "Número do Voo",
+      "Cidade de Origem",
+      "Cidade de Destino",
+      "Comprovação Automatizada",
+    ]) {
+      bloco = bloco.replace(new RegExp(rotulo.replace(/ /g, "\\s+"), "gi"), " ");
+    }
+    bloco = bloco.replace(/\s+/g, " ").trim();
+
+    // Cada linha tem obrigatoriamente "Cidade (UF) Cidade (UF)".
+    const pares: Array<{
+      inicio: number;
+      fim: number;
+      origem: string;
+      destino: string;
+    }> = [];
+    const rePar = new RegExp(`${CIDADE}\\s+${CIDADE}`, "gu");
+    for (const m of bloco.matchAll(rePar)) {
+      const i = m.index ?? 0;
+      pares.push({
+        inicio: i,
+        fim: i + m[0].length,
+        origem: limpaCidade(m[1]),
+        destino: limpaCidade(m[2]),
+      });
+    }
+
+    const lista: BilheteImport[] = [];
+    let fimAnterior = 0;
+    for (let i = 0; i < pares.length; i++) {
+      const p = pares[i];
+      let prefixo = bloco.slice(fimAnterior, p.inicio);
+      const depois = bloco.slice(
+        p.fim,
+        i + 1 < pares.length ? pares[i + 1].inicio : bloco.length,
+      );
+      const mComp = depois.match(/^\s*(Sim|N[aã]o)\b/i);
+      fimAnterior = p.fim + (mComp ? mComp[0].length : 0);
+
+      // Se a "Situação do Bilhete" indicar devolução, vai para a seção 8.
+      const devolvido = /devolv|n[ãa]o\s+utiliz|cancelad/i.test(prefixo);
+
+      const mData = prefixo.match(new RegExp(`\\b(${DATA})\\b`));
+      const mBilhete = [...prefixo.matchAll(/\b[A-Z0-9]{10,}\b/g)]
+        .filter((x) => (x[0].match(/\d/g)?.length ?? 0) >= 10)
+        .pop();
+      const localizador = mBilhete?.[0] ?? "";
+      if (mBilhete?.index !== undefined) {
+        prefixo =
+          prefixo.slice(0, mBilhete.index) +
+          " " +
+          prefixo.slice(mBilhete.index + localizador.length);
+      }
+      if (mData) prefixo = prefixo.replace(mData[0], " ");
+
+      prefixo = prefixo.replace(/\bn\/a\b/gi, " ").replace(/-{2,}/g, " ");
+      const mVoo = prefixo.match(/(\D|^)(\d{1,5})\s*$/);
+      const voo = mVoo?.[2] ?? "";
+      const cia = prefixo
+        .replace(/(\D|^)(\d{1,5})\s*$/, " ")
+        .replace(/\b(Sim|N[ãa]o)\b/gi, " ")
+        // "Situação do Bilhete" (coluna entre o nº e a data)
+        .replace(
+          /\b(?:devolvido|utilizado|emitido|cancelado|reservado|reembolsado)\b/gi,
+          " ",
+        )
+        .replace(/[|;]+/g, " ")
+        .replace(/\s+/g, " ")
+        .replace(/^[\s.,-]+|[\s.,-]+$/g, "")
+        .trim();
+
+      if (!cia && !localizador && !voo) continue;
+
+      const trecho = `${p.origem} > ${p.destino}`;
+      // Sem "Data do Processamento", usa a permanência do trecho igual no
+      // Roteiro da Viagem (quando existir).
+      const doRoteiro = trechos.find(
+        (x) => mesmaCidade(x.origem, p.origem) && mesmaCidade(x.destino, p.destino),
+      );
+      const data = mData?.[1] || doRoteiro?.d1 || "";
+
+      lista.push({
+        tipo: devolvido ? "nao_utilizado" : "utilizado",
+        localizador,
+        data: data ? paraMilitar(data) : "",
+        trecho,
+        cia,
+        voo: voo && voo !== "0" ? voo : "",
+        reserva: "",
+        horario: "",
+        modal: modalDaCia(cia),
+      });
+    }
+    if (lista.length) out.bilhetes = lista;
+  }
 
   /* ----- Quadro de Totalizações ----- */
   const mDias = t.match(/N[úu]mero de Di[áa]rias\s*\n?\s*([0-9]+(?:[.,][0-9]+)?)/i);

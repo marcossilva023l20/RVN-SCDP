@@ -335,17 +335,60 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
       const v = importado[chave];
       if (v) patch[chave] = v;
     }
-    const n = Object.keys(patch).length;
-    if (n === 0) {
+
+    // Bilhetes: acrescenta às linhas já existentes, sem repetir (mesmo tipo,
+    // número do bilhete e trecho).
+    const novos = importado.bilhetes ?? [];
+    const chaveBilhete = (b: { tipo: string; localizador: string; trecho: string }) =>
+      `${b.tipo}|${b.localizador}|${b.trecho}`;
+    const jaTem = new Set(draft.bilhetes.map(chaveBilhete));
+    const adicionar = novos.filter((b) => !jaTem.has(chaveBilhete(b)));
+    if (adicionar.length) {
+      const ordemPor: Record<string, number> = {
+        nao_utilizado: draft.bilhetes.filter((b) => b.tipo === "nao_utilizado").length,
+        utilizado: draft.bilhetes.filter((b) => b.tipo === "utilizado").length,
+      };
+      patch.bilhetes = [
+        ...draft.bilhetes,
+        ...adicionar.map((b) => ({
+          tipo: b.tipo,
+          localizador: b.localizador,
+          data: b.data,
+          trecho: b.trecho,
+          cia: b.cia,
+          voo: b.voo,
+          reserva: b.reserva,
+          horario: b.horario,
+          ordem: ordemPor[b.tipo]++,
+        })),
+      ];
+    }
+
+    const n = Object.keys(patch).filter((k) => k !== "bilhetes").length;
+    if (n === 0 && adicionar.length === 0) {
       setResumoImport(
-        "Nada reconhecido — copie no SCDP as seções Informações da Viagem, Roteiro da Viagem e Quadro de Totalizações.",
+        "Nada reconhecido — copie no SCDP as seções Informações da Viagem, Roteiro da Viagem, Quadro de Totalizações, Dados Atualizados e/ou Bilhetes a Prestar Contas.",
       );
       return;
     }
+
+    let resumo =
+      n > 0
+        ? `${n} ${n === 1 ? "campo preenchido" : "campos preenchidos"} — datas em formato militar.`
+        : "";
+    if (adicionar.length) {
+      const aereos = adicionar.filter((b) => b.modal === "aereo").length;
+      const rodoviarios = adicionar.filter((b) => b.modal === "rodoviario").length;
+      const modais = [
+        aereos ? `${aereos} aéreo${aereos > 1 ? "s" : ""}` : "",
+        rodoviarios ? `${rodoviarios} rodoviário${rodoviarios > 1 ? "s" : ""}` : "",
+      ]
+        .filter(Boolean)
+        .join(", ");
+      resumo += `${resumo ? " " : ""}${adicionar.length} ${adicionar.length === 1 ? "bilhete" : "bilhetes"}${modais ? ` (${modais})` : ""} nas seções 8/9.`;
+    }
+    setResumoImport(`${resumo} Revise horas e complete o que faltar.`);
     upd(patch);
-    setResumoImport(
-      `${n} ${n === 1 ? "campo preenchido" : "campos preenchidos"} — datas já em formato militar. Revise horas e complete o que faltar.`,
-    );
   };
 
   const updBilhetes = (tipo: string) => (rows: BilheteRow[]) =>
@@ -514,9 +557,12 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
                 No SCDP, selecione e copie as seções{" "}
                 <strong className="text-[#a9bcae]">Informações da Viagem</strong>,{" "}
                 <strong className="text-[#a9bcae]">Roteiro da Viagem</strong> e{" "}
-                <strong className="text-[#a9bcae]">Quadro de Totalizações</strong>.
-                Cole abaixo: o app preenche nº do PCDP, datas, itinerário,
-                evento, diárias e — da aba{" "}
+                <strong className="text-[#a9bcae]">Quadro de Totalizações</strong>{" "}
+                e{" "}
+                <strong className="text-[#a9bcae]">Bilhetes a Prestar Contas</strong>.
+                Cole abaixo: o app preenche nº do PCDP, datas (formato militar),
+                itinerário completo, evento, diárias, os bilhetes (aéreo/ônibus)
+                nas seções 8/9 e — da aba{" "}
                 <strong className="text-[#a9bcae]">Dados Atualizados</strong> —
                 CPF, RG, e-mail e dados bancários. Só o que for reconhecido é
                 alterado.

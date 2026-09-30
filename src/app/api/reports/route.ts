@@ -77,6 +77,25 @@ export async function POST(req: NextRequest) {
     if (typeof body[key] === "string" && body[key]) base[key] = body[key];
   }
 
+  // Bilhetes vindos do pré-preenchimento (bookmarklet → /novo → POST)
+  if (Array.isArray(body.bilhetesCopia)) {
+    bilhetesCopia = (body.bilhetesCopia as Array<Record<string, unknown>>).map(
+      (b, i) => ({
+        id: 0,
+        reportId: 0,
+        tipo: typeof b.tipo === "string" && b.tipo ? b.tipo : "utilizado",
+        localizador: typeof b.localizador === "string" ? b.localizador : "",
+        data: typeof b.data === "string" ? b.data : "",
+        trecho: typeof b.trecho === "string" ? b.trecho : "",
+        cia: typeof b.cia === "string" ? b.cia : "",
+        voo: typeof b.voo === "string" ? b.voo : "",
+        reserva: typeof b.reserva === "string" ? b.reserva : "",
+        horario: typeof b.horario === "string" ? b.horario : "",
+        ordem: typeof b.ordem === "number" ? b.ordem : i,
+      }),
+    );
+  }
+
   const [created] = await db.insert(reports).values(base).returning();
 
   if (bilhetesCopia.length > 0) {
