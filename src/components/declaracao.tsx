@@ -127,8 +127,8 @@ export function DeclaracaoExtravio({
           unoptimized
           style={{
             display: "block",
-            width: "2.5cm",
-            height: "2.5cm",
+            width: "1.9cm",
+            height: "1.9cm",
             objectFit: "contain",
             margin: "0 auto 0.15cm",
           }}

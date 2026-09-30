@@ -7,7 +7,7 @@ import type { CSSProperties, ReactNode } from "react";
  * RÉPLICA FIEL do modelo oficial "RVN - Modelo.odt" (SCDP).
  *
  * Estrutura extraída do arquivo original:
- * - Cabeçalho: brasão da República em preto e branco, centralizado (1,5cm);
+ * - Cabeçalho: brasão da República em preto e branco, centralizado (1,90cm);
  *   5 linhas, Times New Roman 10pt, negrito, centralizadas;
  *   1 linha em branco (8pt); título "RELATÓRIO DE VIAGEM NACIONAL" 11pt negrito.
  *   Linhas em branco recebem o padrão do Batalhão (ver `@/lib/org`).
@@ -187,8 +187,8 @@ export function RvnDocument({ draft }: { draft: ReportDraft }) {
           preload
           style={{
             display: "block",
-            width: "2.5cm",
-            height: "2.5cm",
+            width: "1.9cm",
+            height: "1.9cm",
             objectFit: "contain",
             margin: "0 auto 0.15cm",
           }}
