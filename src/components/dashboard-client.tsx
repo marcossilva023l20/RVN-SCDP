@@ -23,6 +23,7 @@ import {
   PlaneTakeoff,
   Plus,
   Printer,
+  RotateCcw,
   ShieldCheck,
   Sparkles,
   Trash2,
@@ -160,20 +161,31 @@ export function DashboardClient({
     router.refresh();
   };
 
-  const salvarPerfil = async () => {
+  const salvarPerfil = async (dados: Profile = profile) => {
     setSavingProfile(true);
     setProfileSaved(false);
     try {
       await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
+        body: JSON.stringify(dados),
       });
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 2500);
     } finally {
       setSavingProfile(false);
     }
+  };
+
+  /**
+   * Volta as 5 linhas do cabeçalho ao padrão do Batalhão — inclusive quando
+   * ficou gravado texto de antes (ex.: só "3º BEC" na linha 3) ou quando uma
+   * linha ficou vazia. Já salva o perfil.
+   */
+  const restaurarCabecalho = () => {
+    const dados: Profile = { ...profile, ...ORG_LINHAS_PADRAO };
+    setProfile(dados);
+    void salvarPerfil(dados);
   };
 
   const rascunhos = reports.filter((r) => r.status === "rascunho").length;
@@ -538,6 +550,19 @@ export function DashboardClient({
                     <p className="mt-1.5 text-[11px] leading-relaxed text-ink-soft">
                       Linha em branco volta ao padrão do Batalhão ao salvar.
                     </p>
+                    <button
+                      type="button"
+                      onClick={restaurarCabecalho}
+                      disabled={savingProfile}
+                      className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-pine/30 bg-pine/5 px-3 py-2 text-[12px] font-bold text-pine transition-colors hover:bg-pine/10 disabled:opacity-60"
+                    >
+                      {savingProfile ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-3.5 w-3.5" />
+                      )}
+                      Restaurar cabeçalho do 3º BEC
+                    </button>
                   </div>
                   {(["orgLinha3", "orgLinha4", "orgLinha5"] as const).map(
                     (key) => (
