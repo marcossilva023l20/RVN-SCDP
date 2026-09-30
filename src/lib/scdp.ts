@@ -45,6 +45,7 @@ export interface ScdpImport {
   eventoInicio?: string;
   eventoTermino?: string;
   eventoDescricao?: string;
+  acrescimoSituacao?: string;
   diariasDias?: string;
   diariasValor?: string;
   diariasExtenso?: string;
@@ -69,6 +70,7 @@ export const CHAVES_IMPORT_SCDP = [
   "eventoInicio",
   "eventoTermino",
   "eventoDescricao",
+  "acrescimoSituacao",
   "diariasDias",
   "diariasValor",
   "diariasExtenso",
@@ -221,17 +223,25 @@ export function parseScdp(bruto: string): ScdpImport {
   }> = [];
   // Sem a flag "i": ela anularia a regra de CAIXA ALTA dentro de CIDADE
   // (com "i", `[A-ZÀ-Þ]{2}` também casaria "Pi").
+  // O tipo é qualquer palavra (Trecho, Trânsito, Permanência, Retorno…) e a
+  // célula seguinte é o "Transporte", que termina em "---", num
+  // "dd/mm/aaaa hh:mm" ou na próxima linha do roteiro.
   const reRoteiro = new RegExp(
     `${CIDADE}\\s+` + // origem
       `${CIDADE}\\s+` + // destino
       `(${DATA})\\s+[aA]\\s+(${DATA})\\s+` + // permanência do trecho
-      "([Tt]recho|[Pp]erman[êe]ncia|[Pp]ermanencia|[Rr]etorno)",
+      "([\\p{L}]+)\\s+" + // tipo
+      `([\\s\\S]*?)(?=\\s+-{2,}|\\s+${DATA}\\s+[0-9]{1,2}:[0-9]{2}|\\s+\\d{1,3}\\s+${CIDADE}|$)`,
     "gu",
   );
+  /** Valores da coluna "Transporte" de cada linha do roteiro. */
+  const transportes: string[] = [];
   for (const m of t.matchAll(reRoteiro)) {
-    const [, origemRaw, destinoRaw, d1, d2, tipo] = m;
+    const [, origemRaw, destinoRaw, d1, d2, tipo, transporteRaw] = m;
     const origem = limpaCidade(origemRaw);
     const destino = limpaCidade(destinoRaw);
+    const transporte = (transporteRaw ?? "").replace(/\s+/g, " ").trim();
+    if (transporte) transportes.push(transporte);
     trechos.push({ origem, destino, d1, d2, tipo });
     if (/trecho/i.test(tipo) && !ida) {
       ida = d1;
@@ -290,6 +300,23 @@ export function parseScdp(bruto: string): ScdpImport {
   if (volta) out.voltaDataHora = paraMilitar(volta);
   if (evIni) out.eventoInicio = paraMilitar(evIni);
   if (evFim) out.eventoTermino = paraMilitar(evFim);
+
+  /* ----- Veículo oficial (opção da seção 7) ----- */
+  // Regra combinada, a partir da coluna "Transporte" do roteiro:
+  //  - só veículo oficial .............. "foi utilizado veículo oficial."
+  //  - oficial + (aéreo/rodoviário) .... "…oficial, em parte da viagem"
+  //  - só aéreo/rodoviário ............. "não foi utilizado veículo oficial"
+  //  - veículo próprio/particular ...... "…oficial ou particular…"
+  const transportesMin = transportes.map((x) => x.toLowerCase());
+  const temOficial = transportesMin.some((x) => /oficial|viatura/.test(x));
+  const temComercial = transportesMin.some((x) =>
+    /a[ée]reo|rodovi|aquavi|[oô]nibus|t[áa]xi|transporte\s+p[úu]blico/.test(x),
+  );
+  const temProprio = transportesMin.some((x) => /pr[óo]prio|particular/.test(x));
+  if (temProprio) out.acrescimoSituacao = "oficial_particular";
+  else if (temOficial && temComercial) out.acrescimoSituacao = "em_parte";
+  else if (temOficial) out.acrescimoSituacao = "utilizou";
+  else if (temComercial) out.acrescimoSituacao = "nao_utilizou";
 
   /* ----- Bilhetes (tabela "a prestar contas" + detalhe do bilhete) --- */
   const listaBilhetes: BilheteImport[] = [];
@@ -523,10 +550,20 @@ export function parseScdp(bruto: string): ScdpImport {
   // Reunião de Colegiados, Lei ou Decreto, Portaria, Auxílios…) — isso não
   // faz parte da descrição do evento.
   const mDesc = t.match(
-    /Descri[çc][ãa]o do Motivo da Viagem:\s*\n?\s*([\s\S]+?)(?=\n\s*(?:ROTEIRO DA VIAGEM|QUADRO DE TOTALIZA|CONFIRMA[ÇC][ÃA]O DA VIAGEM|COMPLEMENTO|RESUMO|DADOS DO PROPOSTO|DADOS ATUALIZADOS|REUNI[ÃA]O DE COLEGIADOS|LEI OU DECRETO|PORTARIA|AUX[ÍI]LIO-ALIMENTA|AUX[ÍI]LIO-TRANSPORTE)|$)/i,
+    /Descri[çc][ãa]o do Motivo da Viagem:\s*\n?\s*([\s\S]+?)(?=\n\s*(?:ROTEIRO DA VIAGEM|QUADRO DE TOTALIZA|CONFIRMA[ÇC][ÃA]O DA VIAGEM|COMPLEMENTO|RESUMO|DADOS DO PROPOSTO|DADOS ATUALIZADOS|DETALHES DO PROPOSTO|DADOS N[OA] VIAGEM|DADOS DA VIAGEM|REUNI[ÃA]O DE COLEGIADOS|LEI OU DECRETO|PORTARIA|AUX[ÍI]LIO-ALIMENTA|AUX[ÍI]LIO-TRANSPORTE)|$)/i,
   );
   if (mDesc) {
-    const desc = mDesc[1].replace(/\s*\n+\s*/g, " ").trim();
+    // Mesmo sem quebra de linha antes, tira do fim os rótulos/abas que o SCDP
+    // cola logo depois da descrição (ex.: "Detalhes do Proposto Dados na
+    // Viagem"). Só do fim, para não cortar uma descrição legítima.
+    const ROTULOS_FIM =
+      /(?:\s*(?:Detalhes do Proposto|Dados n[oa] Viagem|Dados d[ao] Viagem|Dados do Proposto|Confirma[çc][ãa]o da viagem|Complemento|Resumo))+$/i;
+    let desc = mDesc[1].replace(/\s*\n+\s*/g, " ").trim();
+    let antes = "";
+    while (desc !== antes) {
+      antes = desc;
+      desc = desc.replace(ROTULOS_FIM, "").trim();
+    }
     if (desc) out.eventoDescricao = desc;
   }
 
