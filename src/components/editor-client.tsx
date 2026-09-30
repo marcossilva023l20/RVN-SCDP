@@ -344,7 +344,7 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
     }
     upd(patch);
     setResumoImport(
-      `${n} ${n === 1 ? "campo preenchido" : "campos preenchidos"}. Revise datas/horas e complete o que faltar.`,
+      `${n} ${n === 1 ? "campo preenchido" : "campos preenchidos"} — datas já em formato militar. Revise horas e complete o que faltar.`,
     );
   };
 

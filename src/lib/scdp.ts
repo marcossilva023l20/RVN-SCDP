@@ -1,4 +1,10 @@
-import { dataHoraMilitar, formataMoeda, parseMoeda, valorPorExtenso } from "@/lib/format";
+import {
+  dataHoraMilitar,
+  dataMilitar,
+  formataMoeda,
+  parseMoeda,
+  valorPorExtenso,
+} from "@/lib/format";
 
 /**
  * Campos do RVN que o parser consegue extrair do texto copiado das telas do
@@ -191,11 +197,19 @@ export function parseScdp(bruto: string): ScdpImport {
   if (!evIni && mPeriodo) evIni = mPeriodo[1];
   if (!evFim && mPeriodo) evFim = mPeriodo[2];
 
+  // Data civil só com o dia vira formato militar sem hora: 20/07/2026 -> 20JUL26.
+  // Quando há hora real (ex.: "início do trabalho"), o militar completo
+  // (210700JUL26) é mantido.
+  const paraMilitar = (v: string) =>
+    /^\d{2}\/\d{2}\/\d{4}$/.test(v)
+      ? dataMilitar(v.split("/").reverse().join("-"))
+      : v;
+
   if (itinerario) out.itinerario = itinerario;
-  if (ida) out.idaDataHora = ida;
-  if (volta) out.voltaDataHora = volta;
-  if (evIni) out.eventoInicio = evIni;
-  if (evFim) out.eventoTermino = evFim;
+  if (ida) out.idaDataHora = paraMilitar(ida);
+  if (volta) out.voltaDataHora = paraMilitar(volta);
+  if (evIni) out.eventoInicio = paraMilitar(evIni);
+  if (evFim) out.eventoTermino = paraMilitar(evFim);
 
   /* ----- Quadro de Totalizações ----- */
   const mDias = t.match(/N[úu]mero de Di[áa]rias\s*\n?\s*([0-9]+(?:[.,][0-9]+)?)/i);

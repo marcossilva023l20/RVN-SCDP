@@ -1,6 +1,6 @@
 "use client";
 
-import { dataHoraCivil, dataHoraMilitar } from "@/lib/format";
+import { dataHoraCivil, dataHoraMilitar, dataMilitar } from "@/lib/format";
 import { CalendarClock, Check } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
@@ -141,7 +141,7 @@ export function DataHoraField({
 
   const gerar = (estilo: "militar" | "civil") => {
     const v =
-      estilo === "militar" ? dataHoraMilitar(d, h) : dataHoraCivil(d, h);
+      estilo === "militar" ? dataHoraMilitar(d, h) || dataMilitar(d) : dataHoraCivil(d, h);
     if (v) {
       onChange(v);
       setOpen(false);

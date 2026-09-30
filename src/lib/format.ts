@@ -63,6 +63,17 @@ export function dataHoraCivil(isoDate: string, time: string): string {
   return time ? `${base} às ${time}` : base;
 }
 
+/** 2026-07-20 -> "20JUL26" (data militar sem hora) */
+export function dataMilitar(isoDate: string): string {
+  if (!isoDate) return "";
+  const d = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mes = MESES_ABREV[d.getMonth()];
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}${mes}${yy}`;
+}
+
 /** 2024-09-25 -> "25 de setembro de 2024" */
 export function dataPorExtenso(iso: string): string {
   if (!iso) return "";
