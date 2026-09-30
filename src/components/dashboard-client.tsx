@@ -24,11 +24,13 @@ import {
   Plus,
   Printer,
   RotateCcw,
+  Search,
   ShieldCheck,
   Sparkles,
   Trash2,
   UserRound,
   Wand2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -48,6 +50,49 @@ const fmtHora = (iso: string) =>
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(iso));
+
+/** Normaliza para busca: sem acentos, minúsculo, espaços colapsados. */
+function normalizarBusca(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Só letras e números — permite achar "01391226" em "013912/26". */
+function soAlfanumerico(texto: string): string {
+  return texto.replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * Texto pesquisável de um relatório: título, Nº e data da PCDP, beneficiário,
+ * OM, posto, CPF/Idt, e-mail, itinerário, evento, BI e local/data. É por aqui
+ * que a barra de pesquisa do painel encontra os relatórios.
+ */
+function textoPesquisavel(r: Report): string {
+  return normalizarBusca(
+    [
+      r.titulo,
+      r.pcdpNumero,
+      r.pcdpData,
+      r.nome,
+      r.om,
+      r.postoCargo,
+      r.cpf,
+      r.identidade,
+      r.email,
+      r.itinerario,
+      r.eventoDescricao,
+      r.biAutorizacao,
+      r.localData,
+      r.status === "finalizado" ? "finalizado concluido" : "rascunho",
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+}
 
 /** Exemplo fiel ao modelo oficial (para demonstração com um clique). */
 function exemploRVN(): Partial<ReportDraft> {
@@ -115,6 +160,7 @@ export function DashboardClient({
   const [origin, setOrigin] = useState("");
   const [deletingAll, setDeletingAll] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [busca, setBusca] = useState("");
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -228,6 +274,26 @@ export function DashboardClient({
 
   const rascunhos = reports.filter((r) => r.status === "rascunho").length;
   const finalizados = reports.length - rascunhos;
+
+  /** Busca: cada termo digitado precisa aparecer em algum campo do relatório
+   *  (título, Nº/data da PCDP, nome, OM, posto, CPF, itinerário, evento…).
+   *  "Picos silva" acha o relatório que tem os dois; "01391226" também acha
+   *  o "013912/26" (compara só letras e números). */
+  const buscaNormalizada = normalizarBusca(busca);
+  const relatoriosFiltrados = useMemo(() => {
+    if (!buscaNormalizada) return reports;
+    const termos = buscaNormalizada.split(" ").filter(Boolean);
+    return reports.filter((r) => {
+      const alvo = textoPesquisavel(r);
+      const alvoSimples = soAlfanumerico(alvo);
+      return termos.every((t) => {
+        if (alvo.includes(t)) return true;
+        const tSimples = soAlfanumerico(t);
+        return tSimples.length > 0 && alvoSimples.includes(tSimples);
+      });
+    });
+  }, [reports, buscaNormalizada]);
+  const buscando = buscaNormalizada.length > 0;
 
   const inputCls =
     "w-full rounded-lg border border-line bg-cream px-3 py-2 text-[13px] text-ink outline-none transition-all placeholder:text-ink/35 focus:border-pine focus:ring-2 focus:ring-pine/15";
@@ -355,6 +421,55 @@ export function DashboardClient({
                 </span>
               </div>
 
+              {/* ===== Pesquisa ===== */}
+              {reports.length > 0 && (
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
+                    <input
+                      type="text"
+                      inputMode="search"
+                      enterKeyHint="search"
+                      value={busca}
+                      onChange={(e) => setBusca(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") setBusca("");
+                      }}
+                      placeholder="Pesquisar por Nº da PCDP, nome, OM, itinerário…"
+                      aria-label="Pesquisar relatórios"
+                      className="w-full rounded-2xl border border-line bg-white/80 py-3 pl-10 pr-28 text-[13.5px] text-ink shadow-sm outline-none transition-colors placeholder:text-ink-soft/70 focus:border-pine/45 focus:bg-white"
+                    />
+                    {buscando && (
+                      <button
+                        type="button"
+                        onClick={() => setBusca("")}
+                        title="Limpar a pesquisa (Esc)"
+                        className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-full px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-soft transition-colors hover:bg-ink/[0.06] hover:text-ink"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-1.5 px-1 text-[11.5px] font-medium text-ink-soft">
+                    {buscando ? (
+                      <>
+                        <strong className="font-bold text-ink">
+                          {relatoriosFiltrados.length}
+                        </strong>{" "}
+                        de {reports.length} relatório
+                        {reports.length === 1 ? "" : "s"} para “{busca.trim()}”
+                      </>
+                    ) : (
+                      <>
+                        Busque por Nº da PCDP, nome do beneficiário, OM,
+                        itinerário, evento, CPF ou BI.
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
+
               {reports.length === 0 ? (
                 <div className="flex flex-col items-center rounded-3xl border border-dashed border-ink/25 bg-white/50 px-6 py-16 text-center">
                   <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-pine/[0.08] text-pine">
@@ -375,9 +490,33 @@ export function DashboardClient({
                     Criar exemplo
                   </button>
                 </div>
+              ) : relatoriosFiltrados.length === 0 ? (
+                <div className="flex flex-col items-center rounded-3xl border border-dashed border-ink/25 bg-white/50 px-6 py-14 text-center">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gold/[0.12] text-gold">
+                    <Search className="h-7 w-7" strokeWidth={1.7} />
+                  </span>
+                  <h3 className="font-display mt-4 text-lg font-semibold">
+                    Nenhum relatório encontrado
+                  </h3>
+                  <p className="mt-1 max-w-[360px] text-[13px] leading-relaxed text-ink-soft">
+                    Nada corresponde a{" "}
+                    <strong className="font-semibold text-ink">
+                      “{busca.trim()}”
+                    </strong>
+                    . Tente parte do nome, só os números da PCDP ou uma cidade
+                    do itinerário.
+                  </p>
+                  <button
+                    onClick={() => setBusca("")}
+                    className="mt-5 flex items-center gap-2 rounded-full border border-ink/20 bg-white/70 px-5 py-2.5 text-[13px] font-semibold text-ink transition-all hover:border-pine/40 hover:bg-white active:scale-[0.98]"
+                  >
+                    <X className="h-4 w-4" />
+                    Limpar pesquisa
+                  </button>
+                </div>
               ) : (
                 <ul className="space-y-3">
-                  {reports.map((r) => (
+                  {relatoriosFiltrados.map((r) => (
                     <li
                       key={r.id}
                       className="group relative overflow-hidden rounded-2xl border border-line bg-white/80 shadow-sm transition-all hover:-translate-y-0.5 hover:border-pine/35 hover:shadow-md"
