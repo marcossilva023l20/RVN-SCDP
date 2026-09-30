@@ -127,10 +127,10 @@ export function DeclaracaoExtravio({
           unoptimized
           style={{
             display: "block",
-            width: "1.5cm",
-            height: "1.5cm",
+            width: "2.5cm",
+            height: "2.5cm",
             objectFit: "contain",
-            margin: "0 auto 0.1cm",
+            margin: "0 auto 0.15cm",
           }}
         />
         {linhasCabecalho.map((l, i) => (
@@ -193,8 +193,18 @@ export function DeclaracaoExtravio({
         </tbody>
       </table>
 
-      {/* ===== Fecho ===== */}
-      {d.local && <p style={{ margin: "0.8cm 0 0" }}>{d.local}</p>}
+      {/* ===== Fecho (centralizado, como o “Quartel em …” do relatório) ===== */}
+      {d.local && (
+        <p
+          style={{
+            margin: "0.8cm 0 0",
+            textAlign: "center",
+            breakInside: "avoid",
+          }}
+        >
+          {d.local}
+        </p>
+      )}
       {d.assinatura && (
         <p
           style={{

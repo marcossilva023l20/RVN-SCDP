@@ -187,10 +187,10 @@ export function RvnDocument({ draft }: { draft: ReportDraft }) {
           preload
           style={{
             display: "block",
-            width: "1.5cm",
-            height: "1.5cm",
+            width: "2.5cm",
+            height: "2.5cm",
             objectFit: "contain",
-            margin: "0 auto 0.1cm",
+            margin: "0 auto 0.15cm",
           }}
         />
         {linhasCabecalho.map((l, i) => (
