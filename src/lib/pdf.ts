@@ -67,6 +67,17 @@ export function nomeArquivoPdf(pcdpNumero?: string, nome?: string): string {
 /** "baixar" salva o arquivo; "imprimir" abre o MESMO PDF pronto para impressão. */
 export type ModoPdf = "baixar" | "imprimir";
 
+/** "Declaracao de Extravio — PCDP 038577-26.pdf" (nome seguro para arquivo). */
+export function nomeArquivoDeclaracao(
+  pcdpNumero?: string,
+  nome?: string,
+): string {
+  const partes = ["Declaracao de Extravio"];
+  if (pcdpNumero?.trim()) partes.push(`PCDP ${pcdpNumero.trim()}`);
+  else if (nome?.trim()) partes.push(nome.trim());
+  return `${partes.join(" — ").replace(/[/\\:*?"<>|]/g, "-").replace(/\s+/g, " ")}.pdf`;
+}
+
 /**
  * Renderiza `alvo` e monta o PDF A4 com o documento paginado.
  *

@@ -28,8 +28,13 @@ import {
 } from "@/lib/types";
 import { parseScdp, CHAVES_IMPORT_SCDP } from "@/lib/scdp";
 import { BotaoGerarPdf } from "@/components/botao-pdf";
+import {
+  DeclaracaoExtravio,
+  localDeclaracao,
+  temDeclaracao,
+} from "@/components/declaracao";
 import { lerCaptura, limparCaptura } from "@/lib/captura";
-import { nomeArquivoPdf } from "@/lib/pdf";
+import { nomeArquivoDeclaracao, nomeArquivoPdf } from "@/lib/pdf";
 import { PADROES, hojeIso, localDataPadrao } from "@/lib/padroes";
 import {
   ArrowLeft,
@@ -51,6 +56,7 @@ import {
   Plane,
   Plus,
   RotateCcw,
+  ScrollText,
   Sparkles,
   Ticket,
   Trash2,
@@ -503,6 +509,10 @@ export function EditorClient({
   /* ---- Preview com escala ---- */
   const wrapRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
+  // Documento da Declaração de Extravio, montado fora da tela: é ele que o
+  // botão "Declaração" transforma em PDF (só existe quando a seção 9 está
+  // preenchida).
+  const declaracaoRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.7);
   const [paperH, setPaperH] = useState(1200);
 
@@ -627,6 +637,22 @@ export function EditorClient({
             >
               <Trash2 className="h-4 w-4" />
             </button>
+            {/* Declaração de Extravio: só aparece quando a seção 9
+                (canhotos/cartões de embarque utilizados) está preenchida —
+                o documento é montado com os dados do próprio relatório. */}
+            {temDeclaracao(draft) && (
+              <BotaoGerarPdf
+                obterAlvo={() => declaracaoRef.current}
+                nomeArquivo={nomeArquivoDeclaracao(
+                  draft.pcdpNumero,
+                  draft.nome,
+                )}
+                rotulo="Declaração"
+                icone={ScrollText}
+                dica="Gerar o PDF da Declaração de Extravio de Comprovante de Embarque, com os dados da seção 9"
+                className="flex items-center gap-2 rounded-lg border border-[#c9a45c]/40 bg-[#c9a45c]/10 px-3.5 py-2 text-[12.5px] font-bold text-[#e3c68f] transition-colors hover:bg-[#c9a45c]/20 disabled:opacity-60"
+              />
+            )}
             <BotaoGerarPdf
               obterAlvo={() => paperRef.current}
               nomeArquivo={nomeArquivoPdf(draft.pcdpNumero, draft.nome)}
@@ -1194,6 +1220,36 @@ export function EditorClient({
           </div>
         </div>
       </div>
+
+      {/* Documento da Declaração de Extravio, fora da tela — pronto para o
+          botão "Declaração" gerar o PDF (não aparece na tela nem no papel). */}
+      {temDeclaracao(draft) && (
+        <div
+          aria-hidden
+          className="rvn-hide-print"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: "-10000px",
+            zIndex: -1,
+            width: "21cm",
+            background: "#ffffff",
+          }}
+        >
+          <div
+            ref={declaracaoRef}
+            className="rvn-print-reset"
+            style={{ width: "19cm", margin: "0 auto", background: "#ffffff" }}
+          >
+            <DeclaracaoExtravio
+              draft={draft}
+              local={localDeclaracao(
+                montaLocalData(geradorCidade, geradorData),
+              )}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Marca d'água sutil */}
       <div aria-hidden className="pointer-events-none fixed bottom-3 left-4 hidden items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[#41544a] lg:flex">

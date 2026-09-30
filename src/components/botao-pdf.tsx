@@ -2,7 +2,7 @@
 
 import { gerarPdfA4, type ModoPdf } from "@/lib/pdf";
 import { FileDown, Loader2, Printer } from "lucide-react";
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 
 /**
  * Botão que monta o documento A4 no próprio navegador (sem depender do
@@ -19,6 +19,8 @@ export function BotaoGerarPdf({
   rotulo,
   modo = "baixar",
   antes,
+  icone: IconePersonalizado,
+  dica,
 }: {
   obterAlvo: () => HTMLElement | null;
   nomeArquivo: string;
@@ -27,10 +29,14 @@ export function BotaoGerarPdf({
   modo?: ModoPdf;
   /** chamado antes de gerar (ex.: salvar o relatório) */
   antes?: () => void | Promise<void>;
+  /** ícone próprio (padrão: arquivo para baixar, impressora ao imprimir) */
+  icone?: ComponentType<{ className?: string }>;
+  /** texto do balão de ajuda */
+  dica?: string;
 }) {
   const [estado, setEstado] = useState<"parado" | "gerando" | "erro">("parado");
   const imprimir = modo === "imprimir";
-  const Icone = imprimir ? Printer : FileDown;
+  const Icone = IconePersonalizado ?? (imprimir ? Printer : FileDown);
 
   const gerar = async () => {
     const alvo = obterAlvo();
@@ -46,11 +52,13 @@ export function BotaoGerarPdf({
     }
   };
 
-  const titulo = estado === "erro"
-    ? "Não foi possível gerar o PDF — use Ctrl+P e escolha Salvar como PDF."
-    : imprimir
-      ? "Abre o MESMO documento do “Gerar PDF”, pronto para imprimir"
-      : "Baixar o relatório em PDF, em folha A4";
+  const titulo =
+    estado === "erro"
+      ? "Não foi possível gerar o PDF — use Ctrl+P e escolha Salvar como PDF."
+      : (dica ??
+        (imprimir
+          ? "Abre o MESMO documento do “Gerar PDF”, pronto para imprimir"
+          : "Baixar o relatório em PDF, em folha A4"));
 
   return (
     <button

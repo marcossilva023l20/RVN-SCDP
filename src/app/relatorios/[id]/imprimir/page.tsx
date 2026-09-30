@@ -1,9 +1,10 @@
+import { DeclaracaoExtravio, localDeclaracao, temDeclaracao } from "@/components/declaracao";
 import { RvnDocument } from "@/components/document";
 import { PrintBar } from "@/components/print-bar";
 import { db } from "@/db";
 import { bilhetes, reports } from "@/db/schema";
 import { comLocalData, comPadroes } from "@/lib/padroes";
-import { nomeArquivoPdf } from "@/lib/pdf";
+import { nomeArquivoDeclaracao, nomeArquivoPdf } from "@/lib/pdf";
 import { reportToDraft } from "@/lib/types";
 import { asc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -35,17 +36,51 @@ export default async function ImprimirPage({
   // papel e o PDF saírem iguais ao que está na tela.
   const draft = comLocalData(comPadroes(reportToDraft({ ...report, bilhetes: rows })));
 
+  // Declaração de Extravio: disponível quando a seção 9 está preenchida.
+  const comDeclaracao = temDeclaracao(draft);
+
   return (
     <div className="rvn-print-reset min-h-screen bg-paper-deep/60 py-24">
       <PrintBar
         id={numId}
         nomeArquivo={nomeArquivoPdf(draft.pcdpNumero, draft.nome)}
+        temDeclaracaoRelatorio={comDeclaracao}
+        nomeArquivoDeclaracao={nomeArquivoDeclaracao(
+          draft.pcdpNumero,
+          draft.nome,
+        )}
       />
       <main className="rvn-print-reset px-4">
         <div id="rvn-paper" className="rvn-paper mx-auto">
           <RvnDocument draft={draft} />
         </div>
       </main>
+      {/* Documento da Declaração, fora da tela (o botão gera o PDF dele e ele
+          não entra na impressão desta página). */}
+      {comDeclaracao && (
+        <div
+          aria-hidden
+          className="rvn-hide-print"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: "-10000px",
+            zIndex: -1,
+            width: "21cm",
+            background: "#ffffff",
+          }}
+        >
+          <div
+            id="rvn-declaracao"
+            style={{ width: "19cm", margin: "0 auto", background: "#ffffff" }}
+          >
+            <DeclaracaoExtravio
+              draft={draft}
+              local={localDeclaracao(draft.localData)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

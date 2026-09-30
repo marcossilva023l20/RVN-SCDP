@@ -1,15 +1,20 @@
 "use client";
 
 import { BotaoGerarPdf } from "@/components/botao-pdf";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, ScrollText } from "lucide-react";
 import Link from "next/link";
 
 export function PrintBar({
   id,
   nomeArquivo,
+  nomeArquivoDeclaracao,
+  temDeclaracaoRelatorio = false,
 }: {
   id: number;
   nomeArquivo?: string;
+  /** quando informado, mostra o botão da Declaração de Extravio */
+  nomeArquivoDeclaracao?: string;
+  temDeclaracaoRelatorio?: boolean;
 }) {
   return (
     <div className="no-print fixed inset-x-0 top-0 z-50 border-b border-ink/10 bg-cream/90 backdrop-blur">
@@ -25,6 +30,16 @@ export function PrintBar({
           O PDF sai em folha <strong>A4</strong>, com as margens do modelo.
         </p>
         <div className="flex items-center gap-2">
+          {temDeclaracaoRelatorio && nomeArquivoDeclaracao && (
+            <BotaoGerarPdf
+              obterAlvo={() => document.getElementById("rvn-declaracao")}
+              nomeArquivo={nomeArquivoDeclaracao}
+              rotulo="Declaração"
+              icone={ScrollText}
+              dica="Gerar o PDF da Declaração de Extravio de Comprovante de Embarque"
+              className="flex items-center gap-2 rounded-full border border-gold/40 bg-white px-4 py-2.5 text-sm font-semibold text-gold transition-colors hover:bg-gold/5 disabled:opacity-60"
+            />
+          )}
           <BotaoGerarPdf
             obterAlvo={() => document.getElementById("rvn-paper")}
             nomeArquivo={nomeArquivo ?? "Relatorio de Viagem.pdf"}
