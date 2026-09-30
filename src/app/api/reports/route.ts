@@ -85,3 +85,12 @@ export async function POST(req: NextRequest) {
 
   return Response.json({ id: created.id });
 }
+
+/**
+ * Excluir todos os relatórios de uma vez. Os bilhetes (seções 8 e 9) caem
+ * junto por cascade na FK; o perfil do beneficiário permanece intacto.
+ */
+export async function DELETE() {
+  const apagados = await db.delete(reports).returning({ id: reports.id });
+  return Response.json({ ok: true, apagados: apagados.length });
+}

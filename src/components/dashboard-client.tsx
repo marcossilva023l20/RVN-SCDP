@@ -1,6 +1,7 @@
 "use client";
 
 import type { Profile, Report, ReportDraft } from "@/lib/types";
+import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import {
   ORG_LINHAS_LABEL,
   ORG_LINHAS_PADRAO,
@@ -107,12 +108,15 @@ export function DashboardClient({
   initialProfile: Profile;
 }) {
   const router = useRouter();
-  const [reports] = useState(initialReports);
+  const [reports, setReports] = useState(initialReports);
   const [profile, setProfile] = useState(initialProfile);
   const [creating, setCreating] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [origin, setOrigin] = useState("");
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -146,8 +150,28 @@ export function DashboardClient({
 
   const excluir = async (id: number) => {
     if (!confirm("Excluir este relatório definitivamente?")) return;
+    // Remove da lista na hora (otimista), depois confirma no servidor
+    setReports((rs) => rs.filter((r) => r.id !== id));
     await fetch(`/api/reports/${id}`, { method: "DELETE" });
     router.refresh();
+  };
+
+  const excluirTodos = async () => {
+    setDeletingAll(true);
+    try {
+      const res = await fetch("/api/reports", { method: "DELETE" });
+      const data = (await res.json()) as { ok?: boolean; apagados?: number };
+      const n = data.apagados ?? reports.length;
+      setReports([]);
+      setDeleteAllOpen(false);
+      setAviso(
+        n === 1 ? "1 relatório excluído" : `${n} relatórios excluídos`,
+      );
+      setTimeout(() => setAviso(null), 5000);
+      router.refresh();
+    } finally {
+      setDeletingAll(false);
+    }
   };
 
   const duplicar = async (id: number) => {
@@ -291,10 +315,21 @@ export function DashboardClient({
           <div className="grid gap-6 lg:grid-cols-12">
             {/* ===== Lista de relatórios ===== */}
             <main className="anim-rise anim-rise-2 lg:col-span-8">
-              <div className="mb-3 flex items-end justify-between">
-                <h2 className="font-display text-xl font-semibold tracking-tight">
-                  Meus relatórios
-                </h2>
+              <div className="mb-3 flex items-end justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <h2 className="font-display text-xl font-semibold tracking-tight">
+                    Meus relatórios
+                  </h2>
+                  {reports.length > 0 && (
+                    <button
+                      onClick={() => setDeleteAllOpen(true)}
+                      className="flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/[0.06] px-3 py-1.5 text-[12px] font-semibold text-red-600 transition-all hover:border-red-500/50 hover:bg-red-500/10 active:scale-[0.98]"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Excluir todos
+                    </button>
+                  )}
+                </div>
                 <span className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-ink-soft">
                   Salvamento automático
                 </span>
@@ -693,6 +728,23 @@ export function DashboardClient({
           </div>
         </div>
       </div>
+
+      {/* Aviso temporário ("N relatórios excluídos") */}
+      {aviso && (
+        <div className="anim-rise fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[13px] font-semibold text-cream shadow-lg">
+          <Check className="h-4 w-4 text-[#a9cfba]" />
+          {aviso}
+        </div>
+      )}
+
+      {/* Diálogo "Excluir todos" */}
+      <DeleteAllDialog
+        aberto={deleteAllOpen}
+        total={reports.length}
+        ocupado={deletingAll}
+        onFechar={() => setDeleteAllOpen(false)}
+        onConfirmar={() => void excluirTodos()}
+      />
     </div>
   );
 }
