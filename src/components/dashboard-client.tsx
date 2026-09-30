@@ -1,7 +1,6 @@
 "use client";
 
 import type { Profile, Report, ReportDraft } from "@/lib/types";
-import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import {
   ORG_LINHAS_LABEL,
   ORG_LINHAS_PADRAO,
@@ -114,7 +113,6 @@ export function DashboardClient({
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [origin, setOrigin] = useState("");
-  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
 
@@ -157,13 +155,13 @@ export function DashboardClient({
   };
 
   const excluirTodos = async () => {
+    if (reports.length === 0 || deletingAll) return;
     setDeletingAll(true);
     try {
       const res = await fetch("/api/reports", { method: "DELETE" });
       const data = (await res.json()) as { ok?: boolean; apagados?: number };
       const n = data.apagados ?? reports.length;
       setReports([]);
-      setDeleteAllOpen(false);
       setAviso(
         n === 1 ? "1 relatório excluído" : `${n} relatórios excluídos`,
       );
@@ -322,10 +320,16 @@ export function DashboardClient({
                   </h2>
                   {reports.length > 0 && (
                     <button
-                      onClick={() => setDeleteAllOpen(true)}
-                      className="flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/[0.06] px-3 py-1.5 text-[12px] font-semibold text-red-600 transition-all hover:border-red-500/50 hover:bg-red-500/10 active:scale-[0.98]"
+                      onClick={() => void excluirTodos()}
+                      disabled={deletingAll}
+                      title="Excluir todos os relatórios"
+                      className="flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/[0.06] px-3 py-1.5 text-[12px] font-semibold text-red-600 transition-all hover:border-red-500/50 hover:bg-red-500/10 active:scale-[0.98] disabled:opacity-60"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      {deletingAll ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
                       Excluir todos
                     </button>
                   )}
@@ -736,15 +740,6 @@ export function DashboardClient({
           {aviso}
         </div>
       )}
-
-      {/* Diálogo "Excluir todos" */}
-      <DeleteAllDialog
-        aberto={deleteAllOpen}
-        total={reports.length}
-        ocupado={deletingAll}
-        onFechar={() => setDeleteAllOpen(false)}
-        onConfirmar={() => void excluirTodos()}
-      />
     </div>
   );
 }
