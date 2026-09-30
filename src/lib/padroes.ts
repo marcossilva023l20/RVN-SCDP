@@ -1,3 +1,4 @@
+import { montaLocalData } from "@/lib/format";
 import type { ReportDraft } from "@/lib/types";
 
 /**
@@ -21,6 +22,29 @@ export const PADROES = {
 const vazio = (v: string | undefined) => !v?.trim();
 
 /**
+ * Data de hoje (AAAA-MM-DD) no fuso de Brasília.
+ *
+ * O fuso fixo faz o servidor (que roda em UTC) e o navegador chegarem à mesma
+ * data — sem isso, à noite o documento sairia com o dia seguinte.
+ */
+export function hojeIso(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+/**
+ * Frase de "Local e data" montada com a Cidade/UF padrão e a data informada
+ * (hoje, quando não informada): "Quartel em Picos/PI, 30 de setembro de 2026."
+ */
+export function localDataPadrao(iso: string = hojeIso()): string {
+  return montaLocalData(PADROES.cidadeUf, iso);
+}
+
+/**
  * Completa com os valores padrão apenas os campos que estão em branco.
  * Qualquer valor já existente (digitado, importado do SCDP ou vindo do
  * perfil) é preservado.
@@ -34,4 +58,16 @@ export function comPadroes(draft: ReportDraft): ReportDraft {
       ? PADROES.devolucaoJustificativa
       : draft.devolucaoJustificativa,
   };
+}
+
+/**
+ * "Local e data" para documentos que não passaram pelo editor (ex.: um
+ * relatório antigo aberto direto na impressão): monta a frase quando o campo
+ * está em branco. No editor quem monta é o próprio navegador, para usar a data
+ * de quem está preenchendo.
+ */
+export function comLocalData(draft: ReportDraft, iso?: string): ReportDraft {
+  return vazio(draft.localData)
+    ? { ...draft, localData: localDataPadrao(iso) }
+    : draft;
 }

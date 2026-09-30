@@ -30,7 +30,7 @@ import { parseScdp, CHAVES_IMPORT_SCDP } from "@/lib/scdp";
 import { BotaoGerarPdf } from "@/components/botao-pdf";
 import { lerCaptura, limparCaptura } from "@/lib/captura";
 import { nomeArquivoPdf } from "@/lib/pdf";
-import { PADROES } from "@/lib/padroes";
+import { PADROES, hojeIso, localDataPadrao } from "@/lib/padroes";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -239,7 +239,19 @@ export function EditorClient({
   capturaScdp?: boolean;
 }) {
   const router = useRouter();
-  const [draft, setDraft] = useState<ReportDraft>(initial);
+  // "Local e data" já nasce montada a partir da Cidade/UF e da Data (e continua
+  // acompanhando as duas enquanto a pessoa não escrever uma frase própria).
+  const [draft, setDraft] = useState<ReportDraft>(() =>
+    initial.localData?.trim()
+      ? initial
+      : { ...initial, localData: localDataPadrao() },
+  );
+  // Frase escrita à mão: para de acompanhar Cidade/UF e Data.
+  const [localDataManual, setLocalDataManual] = useState(
+    () =>
+      Boolean(initial.localData?.trim()) &&
+      initial.localData.trim() !== localDataPadrao(hojeIso()),
+  );
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving">(
     "saved",
   );
@@ -346,11 +358,24 @@ export function EditorClient({
   };
 
   const [geradorCidade, setGeradorCidade] = useState<string>(PADROES.cidadeUf);
-  const hojeISO = new Date().toISOString().slice(0, 10);
+  const hojeISO = hojeIso();
   const [geradorData, setGeradorData] = useState(hojeISO);
 
-  const gerarLocalData = () =>
+  const gerarLocalData = () => {
+    // Pedido explícito de gerar: volta a acompanhar Cidade/UF e Data.
+    setLocalDataManual(false);
     upd({ localData: montaLocalData(geradorCidade, geradorData) });
+  };
+
+  const mudarCidade = (v: string) => {
+    setGeradorCidade(v);
+    if (!localDataManual) upd({ localData: montaLocalData(v, geradorData) });
+  };
+
+  const mudarData = (v: string) => {
+    setGeradorData(v);
+    if (!localDataManual) upd({ localData: montaLocalData(geradorCidade, v) });
+  };
 
   const sugerirAssinatura = () =>
     upd({
@@ -1089,7 +1114,7 @@ export function EditorClient({
                 <Field label="Cidade / UF">
                   <TextInput
                     value={geradorCidade}
-                    onChange={setGeradorCidade}
+                    onChange={mudarCidade}
                     placeholder="Picos/PI"
                   />
                 </Field>
@@ -1097,26 +1122,37 @@ export function EditorClient({
                   <input
                     type="date"
                     value={geradorData}
-                    onChange={(e) => setGeradorData(e.target.value)}
+                    onChange={(e) => mudarData(e.target.value)}
                     className="w-full rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2.5 text-[13px] text-[#edf2ee] outline-none [color-scheme:dark] focus:border-[#7ba889]"
                   />
                 </Field>
               </div>
-              <button
-                type="button"
-                onClick={gerarLocalData}
-                className="flex items-center gap-2 rounded-lg border border-[#7ba889]/30 bg-[#7ba889]/10 px-3 py-2 text-[12px] font-semibold text-[#a9cfba] transition-colors hover:bg-[#7ba889]/20"
+              <Field
+                label={
+                  localDataManual
+                    ? "Frase final (escrita por você)"
+                    : "Frase final (montada com a Cidade/UF e a Data acima)"
+                }
               >
-                <Sparkles className="h-4 w-4" />
-                Gerar “Quartel em …, … de … de ….”
-              </button>
-              <Field label="Frase final (como sairá no documento)">
                 <TextInput
                   value={draft.localData}
-                  onChange={(v) => upd({ localData: v })}
+                  onChange={(v) => {
+                    setLocalDataManual(true);
+                    upd({ localData: v });
+                  }}
                   placeholder="Quartel em Picos/PI, 25 de novembro de 2025."
                 />
               </Field>
+              {localDataManual && (
+                <button
+                  type="button"
+                  onClick={gerarLocalData}
+                  className="flex items-center gap-2 rounded-lg border border-[#7ba889]/30 bg-[#7ba889]/10 px-3 py-2 text-[12px] font-semibold text-[#a9cfba] transition-colors hover:bg-[#7ba889]/20"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Voltar a montar com a Cidade/UF e a Data
+                </button>
+              )}
               <Field label="Linha de assinatura">
                 <TextInput
                   value={draft.assinatura}

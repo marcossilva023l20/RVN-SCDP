@@ -2,7 +2,7 @@ import { RvnDocument } from "@/components/document";
 import { PrintBar } from "@/components/print-bar";
 import { db } from "@/db";
 import { bilhetes, reports } from "@/db/schema";
-import { comPadroes } from "@/lib/padroes";
+import { comLocalData, comPadroes } from "@/lib/padroes";
 import { nomeArquivoPdf } from "@/lib/pdf";
 import { reportToDraft } from "@/lib/types";
 import { asc, eq } from "drizzle-orm";
@@ -33,7 +33,7 @@ export default async function ImprimirPage({
 
   // O documento impresso mostra os mesmos valores padrão do editor, para o
   // papel e o PDF saírem iguais ao que está na tela.
-  const draft = comPadroes(reportToDraft({ ...report, bilhetes: rows }));
+  const draft = comLocalData(comPadroes(reportToDraft({ ...report, bilhetes: rows })));
 
   return (
     <div className="rvn-print-reset min-h-screen bg-paper-deep/60 py-24">
