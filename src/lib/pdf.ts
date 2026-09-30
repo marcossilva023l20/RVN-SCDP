@@ -155,6 +155,24 @@ export async function gerarPdfA4(
       ),
     );
 
+    // 2) Uma folha só: o RVN é um formulário de uma página. Se o texto passou
+    //    um pouco da altura útil (ex.: uma linha a mais na seção 9), o
+    //    documento é reduzido o mínimo necessário em vez de jogar a assinatura
+    //    para a página seguinte. Limite de 20% de redução: em casos extremos,
+    //    duas páginas (com o local/data + assinatura sempre juntos) é melhor
+    //    do que um documento ilegível.
+    const pxPorMmCss = 96 / 25.4;
+    const alturaConteudoCss = copia.getBoundingClientRect().height;
+    const alturaConteudoMm = alturaConteudoCss / pxPorMmCss;
+    const larguraConteudoMm = A4.larguraMm;
+    // Fator para o documento inteiro caber em uma folha (nunca menos que 80%,
+    // para não devolver um documento ilegível em casos extremos).
+    const alturaAlvoMm = alturaPaginaMm - 3; // 3mm de folga até o corte
+    const fatorUmaFolha =
+      alturaConteudoMm > alturaAlvoMm + 0.5
+        ? Math.max(0.8, alturaAlvoMm / alturaConteudoMm)
+        : 1;
+
     const escala = Math.min(
       3,
       Math.max(2, (window.devicePixelRatio || 1) * 1.5),
@@ -166,7 +184,7 @@ export async function gerarPdfA4(
       useCORS: true,
     });
 
-    // 2) Paginação: corta nas bordas dos blocos (nunca no meio de uma linha).
+    // 3) Paginação: corta nas bordas dos blocos (nunca no meio de uma linha).
     const larguraCss = folha.getBoundingClientRect().width || 1;
     const escalaCss = canvas.width / larguraCss;
     const pxPorMm = canvas.width / A4.larguraMm;
@@ -211,38 +229,56 @@ export async function gerarPdfA4(
       creator: "RVN Fácil",
     });
 
-    fatias.forEach(({ inicio, fim }, i) => {
-      const altura = fim - inicio;
-      const recorte = document.createElement("canvas");
-      recorte.width = canvas.width;
-      recorte.height = altura;
-      const ctx = recorte.getContext("2d");
-      if (!ctx) throw new Error("Canvas indisponível neste navegador");
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, recorte.width, recorte.height);
-      ctx.drawImage(
-        canvas,
-        0,
-        inicio,
-        canvas.width,
-        altura,
-        0,
-        0,
-        canvas.width,
-        altura,
-      );
-      if (i > 0) pdf.addPage();
+
+    if (fatorUmaFolha < 1) {
+      // Documento um pouco maior que a folha: sai reduzido, centralizado e
+      // inteiro em uma página — a assinatura nunca cai sozinha na seguinte.
+      const larguraMm = larguraConteudoMm * fatorUmaFolha;
+      const alturaMm = alturaConteudoMm * fatorUmaFolha;
       pdf.addImage(
-        recorte.toDataURL("image/jpeg", 0.92),
+        canvas.toDataURL("image/jpeg", 0.92),
         "JPEG",
-        0,
+        (A4.larguraMm - larguraMm) / 2,
         A4.margemTopoMm,
-        A4.larguraMm,
-        altura / pxPorMm,
+        larguraMm,
+        alturaMm,
         undefined,
         "FAST",
       );
-    });
+    } else {
+      fatias.forEach(({ inicio, fim }, i) => {
+        const altura = fim - inicio;
+        const recorte = document.createElement("canvas");
+        recorte.width = canvas.width;
+        recorte.height = altura;
+        const ctx = recorte.getContext("2d");
+        if (!ctx) throw new Error("Canvas indisponível neste navegador");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, recorte.width, recorte.height);
+        ctx.drawImage(
+          canvas,
+          0,
+          inicio,
+          canvas.width,
+          altura,
+          0,
+          0,
+          canvas.width,
+          altura,
+        );
+        if (i > 0) pdf.addPage();
+        pdf.addImage(
+          recorte.toDataURL("image/jpeg", 0.92),
+          "JPEG",
+          0,
+          A4.margemTopoMm,
+          A4.larguraMm,
+          altura / pxPorMm,
+          undefined,
+          "FAST",
+        );
+      });
+    }
 
     if (modo === "imprimir") {
       // `autoPrint` embute no PDF a ordem de imprimir: o navegador carrega o

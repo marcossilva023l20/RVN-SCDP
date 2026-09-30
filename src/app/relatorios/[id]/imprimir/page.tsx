@@ -1,3 +1,4 @@
+import { AjusteDeImpressao } from "@/components/ajuste-impressao";
 import { DeclaracaoExtravio, localDeclaracao, temDeclaracao } from "@/components/declaracao";
 import { RvnDocument } from "@/components/document";
 import { PrintBar } from "@/components/print-bar";
@@ -41,6 +42,8 @@ export default async function ImprimirPage({
 
   return (
     <div className="rvn-print-reset min-h-screen bg-paper-deep/60 py-24">
+      {/* mantém o documento inteiro em uma folha (ver o componente) */}
+      <AjusteDeImpressao />
       <PrintBar
         id={numId}
         nomeArquivo={nomeArquivoPdf(draft.pcdpNumero, draft.nome)}

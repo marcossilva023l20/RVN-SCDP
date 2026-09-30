@@ -27,6 +27,7 @@ import {
   type ReportDraft,
 } from "@/lib/types";
 import { parseScdp, CHAVES_IMPORT_SCDP } from "@/lib/scdp";
+import { AjusteDeImpressao } from "@/components/ajuste-impressao";
 import { BotaoGerarPdf } from "@/components/botao-pdf";
 import {
   DeclaracaoExtravio,
@@ -1250,6 +1251,9 @@ export function EditorClient({
           </div>
         </div>
       )}
+
+      {/* Mantém o documento inteiro em uma folha na impressão (Ctrl+P) */}
+      <AjusteDeImpressao />
 
       {/* Marca d'água sutil */}
       <div aria-hidden className="pointer-events-none fixed bottom-3 left-4 hidden items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[#41544a] lg:flex">

@@ -417,11 +417,11 @@ export function RvnDocument({ draft }: { draft: ReportDraft }) {
           </FullRow>
           <tr>
             {[
-              { span: 1, label: "Localizador" },
+              { span: 3, label: "Localizador" },
               { span: 2, label: "Data" },
               { span: 4, label: "Trecho" },
               { span: 3, label: "Cia/Transportadora" },
-              { span: 4, label: "Nº voo" },
+              { span: 2, label: "Nº voo" },
               { span: 1, label: "Horário" },
             ].map((c) => (
               <Cell key={c.label} span={c.span} center>
@@ -431,7 +431,7 @@ export function RvnDocument({ draft }: { draft: ReportDraft }) {
           </tr>
           {linhas8.map((b, i) => (
             <tr key={i}>
-              <Cell span={1} center>
+              <Cell span={3} center>
                 <p style={{ margin: 0 }}>{b.localizador || "\u00A0"}</p>
               </Cell>
               <Cell span={2} center>
@@ -443,7 +443,7 @@ export function RvnDocument({ draft }: { draft: ReportDraft }) {
               <Cell span={3} center>
                 <p style={{ margin: 0 }}>{b.cia || "\u00A0"}</p>
               </Cell>
-              <Cell span={4} center>
+              <Cell span={2} center>
                 <p style={{ margin: 0 }}>{b.voo || "\u00A0"}</p>
               </Cell>
               <Cell span={1} center>

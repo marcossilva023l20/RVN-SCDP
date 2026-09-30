@@ -93,6 +93,13 @@ body {
     overflow: visible !important;
     background: #fff !important;
   }
+  /* O documento inteiro em uma folha: quando o texto passa um pouco da área
+     útil, o relatório é reduzido o mínimo necessário (variável calculada em
+     AjusteDeImpressao). Sem a variável, sai no tamanho original. */
+  #rvn-paper > article {
+    transform: scale(var(--rvn-escala-impressao, 1));
+    transform-origin: top center;
+  }
   .rvn-paper {
     width: auto !important;
     /* sem o mínimo de uma folha inteira: quem manda no tamanho é o @page */
