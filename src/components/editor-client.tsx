@@ -27,7 +27,7 @@ import {
   TIPOS_BENEFICIARIO,
   type ReportDraft,
 } from "@/lib/types";
-import { parseScdp, CHAVES_IMPORT_SCDP } from "@/lib/scdp";
+import { parseScdp, CHAVES_IMPORT_SCDP, LIMITE_CAPTURA_URL } from "@/lib/scdp";
 import { BotaoGerarPdf } from "@/components/botao-pdf";
 
 import {
@@ -351,11 +351,15 @@ export function EditorClient({
   // O favorito "Capturar do SCDP" entrega o texto selecionado já nesta caixa
   // (chega pela URL e é lido no servidor, sem piscar na tela).
   const [textoScdp, setTextoScdp] = useState(textoInicial);
-  const [resumoImport, setResumoImport] = useState(
-    textoInicial
-      ? "Texto capturado do SCDP. Confira e clique em “Preencher campos”."
-      : "",
-  );
+  const [resumoImport, setResumoImport] = useState(() => {
+    if (!textoInicial) return "";
+    // Seleção maior que o limite da URL: o texto completo está na área de
+    // transferência — basta usar o botão "Colar".
+    if (textoInicial.length >= LIMITE_CAPTURA_URL) {
+      return "Texto capturado do SCDP (a seleção era grande e veio até o limite do favorito). Clique em “Colar” para trazer o texto completo e depois em “Preencher campos”.";
+    }
+    return "Texto capturado do SCDP. Confira e clique em “Preencher campos”.";
+  });
 
   // Depois de receber o texto, limpa a URL (o texto já está na caixa).
   useEffect(() => {
