@@ -49,16 +49,16 @@ const est = StyleSheet.create({
   pagina: {
     fontFamily: "Times-Roman",
     fontSize: 10,
-    lineHeight: 1.35,
+    lineHeight: 1.28,
     color: "#000000",
     paddingTop: MARGEM.topo,
     paddingHorizontal: MARGEM.lados,
     paddingBottom: MARGEM.pe,
   },
-  cabecalho: { textAlign: "center", lineHeight: 1.2 },
-  brasao: { width: 42.52, height: 42.52, marginHorizontal: "auto", marginBottom: 2.8 },
+  cabecalho: { textAlign: "center", lineHeight: 1.15 },
+  brasao: { width: 38, height: 38, marginHorizontal: "auto", marginBottom: 1.5 },
   linhaCabecalho: { fontWeight: "bold" },
-  espacador: { fontSize: 8 },
+  espacador: { fontSize: 5 },
   titulo: { fontWeight: "bold", fontSize: 11 },
   linha: { flexDirection: "row", flexWrap: "nowrap" },
   linhaComQuebra: { flexDirection: "row", flexWrap: "wrap" },
@@ -79,6 +79,8 @@ const est = StyleSheet.create({
   negrito: { fontWeight: "bold" },
   justificado: { textAlign: "justify" },
   centralizado: { textAlign: "center" },
+  /** nome abaixo da data, com o respiro da assinatura manuscrita */
+  assinaturaNome: { marginTop: 10 },
   italico: { fontStyle: "italic" },
 });
 
@@ -528,10 +530,9 @@ export function RvnPdf({
             {
               span: 15,
               node: (
-                <View style={[est.centralizado, { paddingTop: 3, paddingBottom: 3 }]}>
+                <View style={[est.centralizado, { paddingTop: 2, paddingBottom: 2 }]}>
                   <Text style={est.texto}>{draft.localData || " "}</Text>
-                  <Text style={est.texto}> </Text>
-                  <Text style={[est.texto, est.negrito]}>
+                  <Text style={[est.texto, est.assinaturaNome]}>
                     {draft.assinatura ||
                       (draft.nome
                         ? `${draft.nome.toUpperCase()}${
