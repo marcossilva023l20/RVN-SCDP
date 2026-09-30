@@ -3,6 +3,7 @@
 import { Loader2, PlaneTakeoff } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { CHAVES_IMPORT_SCDP, parseScdp } from "@/lib/scdp";
 
 function NovoInner() {
   const router = useRouter();
@@ -15,18 +16,25 @@ function NovoInner() {
     started.current = true;
     const pcdp = params.get("pcdp") ?? "";
     const trecho = (params.get("t") ?? "").trim();
+    // Texto copiado no SCDP: extrai PCDP, datas, itinerário, evento, diárias…
+    const importado = parseScdp(trecho);
+    const body: Record<string, string> = {
+      titulo: pcdp ? `RVN — PCDP ${pcdp}` : "Relatório sem título",
+      pcdpNumero: importado.pcdpNumero ?? pcdp,
+      // Se o parser não reconheceu a descrição, guarda o texto bruto para
+      // facilitar a edição posterior.
+      eventoDescricao: importado.eventoDescricao || trecho,
+    };
+    for (const chave of CHAVES_IMPORT_SCDP) {
+      const v = importado[chave];
+      if (v) body[chave] = v;
+    }
     (async () => {
       try {
         const res = await fetch("/api/reports", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            titulo: pcdp ? `RVN — PCDP ${pcdp}` : "Relatório sem título",
-            pcdpNumero: pcdp,
-            // Se o usuário selecionou texto no SCDP, guardamos no campo Evento
-            // para facilitar a edição posterior.
-            eventoDescricao: trecho || "",
-          }),
+          body: JSON.stringify(body),
         });
         const { id } = (await res.json()) as { id: number };
         router.replace(`/relatorios/${id}`);

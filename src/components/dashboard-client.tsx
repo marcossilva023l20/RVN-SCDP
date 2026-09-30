@@ -122,7 +122,7 @@ export function DashboardClient({
 
   const bookmarklet = useMemo(() => {
     if (!origin) return "#";
-    const code = `(function(){var t=(window.getSelection?window.getSelection().toString():'')||'';var m=t.match(/\\d{4,7}\\s*\\/\\s*\\d{2,4}/);window.open('${origin}/novo?'+(m?('pcdp='+encodeURIComponent(m[0].replace(/\\s/g,''))):'')+'&t='+encodeURIComponent(t.slice(0,300)),'_blank');})()`;
+    const code = `(function(){var t=(window.getSelection?window.getSelection().toString():'')||'';var m=t.match(/\\d{4,7}\\s*\\/\\s*\\d{2,4}/);window.open('${origin}/novo?'+(m?('pcdp='+encodeURIComponent(m[0].replace(/\\s/g,''))):'')+'&t='+encodeURIComponent(t.slice(0,6000)),'_blank');})()`;
     return `javascript:${code}`;
   }, [origin]);
 

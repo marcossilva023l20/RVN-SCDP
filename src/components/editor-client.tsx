@@ -26,6 +26,7 @@ import {
   TIPOS_BENEFICIARIO,
   type ReportDraft,
 } from "@/lib/types";
+import { parseScdp, CHAVES_IMPORT_SCDP } from "@/lib/scdp";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -36,6 +37,7 @@ import {
   ChevronDown,
   CircleDollarSign,
   ClipboardList,
+  ClipboardPaste,
   Copy,
   FileCheck2,
   FileText,
@@ -322,6 +324,30 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
       assinatura: `${draft.nome.toUpperCase()}${draft.postoCargo ? ` – ${draft.postoCargo.toUpperCase()}` : ""}`,
     });
 
+  /* ---- Importar do SCDP (texto colado) ---- */
+  const [textoScdp, setTextoScdp] = useState("");
+  const [resumoImport, setResumoImport] = useState("");
+
+  const importarScdp = () => {
+    const importado = parseScdp(textoScdp);
+    const patch: Partial<ReportDraft> = {};
+    for (const chave of CHAVES_IMPORT_SCDP) {
+      const v = importado[chave];
+      if (v) patch[chave] = v;
+    }
+    const n = Object.keys(patch).length;
+    if (n === 0) {
+      setResumoImport(
+        "Nada reconhecido — copie no SCDP as seções Informações da Viagem, Roteiro da Viagem e Quadro de Totalizações.",
+      );
+      return;
+    }
+    upd(patch);
+    setResumoImport(
+      `${n} ${n === 1 ? "campo preenchido" : "campos preenchidos"}. Revise datas/horas e complete o que faltar.`,
+    );
+  };
+
   const updBilhetes = (tipo: string) => (rows: BilheteRow[]) =>
     upd({
       bilhetes: [
@@ -477,6 +503,43 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
           className={`w-full lg:w-[460px] lg:shrink-0 ${showPreviewMobile ? "hidden lg:block" : ""}`}
         >
           <div className="dark-scroll space-y-3 px-4 py-4 lg:h-[calc(100vh-57px)] lg:overflow-y-auto lg:pr-3">
+            {/* 0. Importar do SCDP */}
+            <EditorSection
+              num="0"
+              title="Importar do SCDP (colar texto)"
+              icon={ClipboardPaste}
+              defaultOpen={false}
+            >
+              <p className="-mt-1 text-[12px] leading-relaxed text-[#7e9789]">
+                No SCDP, selecione e copie as seções{" "}
+                <strong className="text-[#a9bcae]">Informações da Viagem</strong>,{" "}
+                <strong className="text-[#a9bcae]">Roteiro da Viagem</strong> e{" "}
+                <strong className="text-[#a9bcae]">Quadro de Totalizações</strong>.
+                Cole abaixo: o app preenche nº do PCDP, datas, itinerário,
+                evento e diárias. Só o que for reconhecido é alterado.
+              </p>
+              <TextArea
+                value={textoScdp}
+                onChange={setTextoScdp}
+                placeholder="Cole aqui o texto copiado do SCDP…"
+                rows={5}
+              />
+              <button
+                type="button"
+                onClick={importarScdp}
+                disabled={!textoScdp.trim()}
+                className="flex items-center gap-1.5 rounded-lg bg-[#7ba889]/20 px-3 py-2 text-[12px] font-semibold text-[#c9e6d2] transition-colors hover:bg-[#7ba889]/30 disabled:opacity-40"
+              >
+                <Wand2 className="h-3.5 w-3.5" />
+                Preencher campos
+              </button>
+              {resumoImport && (
+                <p className="text-[12px] leading-relaxed text-[#a9cfba]">
+                  {resumoImport}
+                </p>
+              )}
+            </EditorSection>
+
             {/* Cabeçalho */}
             <EditorSection
               num="H"

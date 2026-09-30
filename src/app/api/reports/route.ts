@@ -55,10 +55,17 @@ export async function POST(req: NextRequest) {
     "titulo",
     "pcdpNumero",
     "pcdpData",
+    "nome",
+    "tipoBeneficiario",
     "itinerario",
     "idaDataHora",
     "voltaDataHora",
+    "eventoInicio",
+    "eventoTermino",
     "eventoDescricao",
+    "diariasDias",
+    "diariasValor",
+    "diariasExtenso",
   ] as const;
   for (const key of permitidos) {
     if (typeof body[key] === "string" && body[key]) base[key] = body[key];
