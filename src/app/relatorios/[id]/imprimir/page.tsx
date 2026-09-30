@@ -2,6 +2,7 @@ import { RvnDocument } from "@/components/document";
 import { PrintBar } from "@/components/print-bar";
 import { db } from "@/db";
 import { bilhetes, reports } from "@/db/schema";
+import { nomeArquivoPdf } from "@/lib/pdf";
 import { reportToDraft } from "@/lib/types";
 import { asc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -33,9 +34,12 @@ export default async function ImprimirPage({
 
   return (
     <div className="min-h-screen bg-paper-deep/60 py-24">
-      <PrintBar id={numId} />
+      <PrintBar
+        id={numId}
+        nomeArquivo={nomeArquivoPdf(draft.pcdpNumero, draft.nome)}
+      />
       <main className="px-4">
-        <div className="rvn-paper mx-auto">
+        <div id="rvn-paper" className="rvn-paper mx-auto">
           <RvnDocument draft={draft} />
         </div>
       </main>

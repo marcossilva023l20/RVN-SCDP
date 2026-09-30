@@ -27,6 +27,8 @@ import {
   type ReportDraft,
 } from "@/lib/types";
 import { parseScdp, CHAVES_IMPORT_SCDP } from "@/lib/scdp";
+import { BotaoGerarPdf } from "@/components/botao-pdf";
+import { nomeArquivoPdf } from "@/lib/pdf";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -526,6 +528,11 @@ export function EditorClient({ initial }: { initial: ReportDraft }) {
             >
               <Trash2 className="h-4 w-4" />
             </button>
+            <BotaoGerarPdf
+              obterAlvo={() => paperRef.current}
+              nomeArquivo={nomeArquivoPdf(draft.pcdpNumero, draft.nome)}
+              className="flex items-center gap-2 rounded-lg border border-[#8fb99d]/40 bg-[#8fb99d]/10 px-3.5 py-2 text-[12.5px] font-bold text-[#c9e6d2] transition-colors hover:bg-[#8fb99d]/20 disabled:opacity-60"
+            />
             <a
               href={`/relatorios/${reportId}/imprimir`}
               target="_blank"
