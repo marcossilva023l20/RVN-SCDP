@@ -394,22 +394,13 @@ export function DashboardClient({
       <div className="bg-grain">
         <div className="mx-auto max-w-7xl px-4 pb-20">
           {/* ===== Hero ===== */}
-          <section className="grid gap-6 py-12 lg:grid-cols-[1.35fr_1fr] lg:items-end lg:py-16">
+          <section className="grid gap-6 py-8 lg:grid-cols-[1.35fr_1fr] lg:items-center lg:py-10">
             <div className="anim-rise">
               <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-pine/25 bg-pine/[0.07] px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-pine">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Modelo oficial RVN / PCDP
               </p>
-              <h1 className="font-display max-w-[620px] text-[clamp(2rem,4.6vw,3.4rem)] font-semibold leading-[1.06] tracking-tight">
-                Sua prestação de contas,{" "}
-                <span className="italic text-pine">montada sozinha.</span>
-              </h1>
-              <p className="mt-4 max-w-[520px] text-[15px] leading-relaxed text-ink-soft">
-                Com o SCDP aberto ao lado, copie os dados da missão, preencha os
-                campos guiados e receba o documento oficial em A4 — pronto para
-                assinar e anexar. Sem Word, sem formatação manual.
-              </p>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   onClick={() => void criar(false)}
                   disabled={creating}
