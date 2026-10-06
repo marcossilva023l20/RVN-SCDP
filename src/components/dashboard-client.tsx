@@ -16,6 +16,8 @@ import {
   Copy,
   ExternalLink,
   FileText,
+  Folder,
+  FolderOpen,
   ListChecks,
   Loader2,
   MapPin,
@@ -161,6 +163,12 @@ export function DashboardClient({
   const [deletingAll, setDeletingAll] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
+  /** Pasta aberta: a tela inicial mostra só os RASCUNHOS; os finalizados ficam
+   *  guardados na pasta "Finalizados" e "Mostrar todos" junta as duas. */
+  const [pasta, setPasta] = useState<"rascunho" | "finalizados" | "todos">(
+    "rascunho",
+  );
+  const [mudandoStatus, setMudandoStatus] = useState<number | null>(null);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -280,10 +288,26 @@ export function DashboardClient({
    *  "Picos silva" acha o relatório que tem os dois; "01391226" também acha
    *  o "013912/26" (compara só letras e números). */
   const buscaNormalizada = normalizarBusca(busca);
+
+  const pastaNome =
+    pasta === "rascunho"
+      ? "em rascunho"
+      : pasta === "finalizados"
+        ? "finalizados"
+        : "no total";
+
+  /** Relatórios da pasta aberta (antes da busca). */
+  const relatoriosDaPasta = useMemo(() => {
+    if (pasta === "todos") return reports;
+    if (pasta === "finalizados")
+      return reports.filter((r) => r.status !== "rascunho");
+    return reports.filter((r) => r.status === "rascunho");
+  }, [reports, pasta]);
+
   const relatoriosFiltrados = useMemo(() => {
-    if (!buscaNormalizada) return reports;
+    if (!buscaNormalizada) return relatoriosDaPasta;
     const termos = buscaNormalizada.split(" ").filter(Boolean);
-    return reports.filter((r) => {
+    return relatoriosDaPasta.filter((r) => {
       const alvo = textoPesquisavel(r);
       const alvoSimples = soAlfanumerico(alvo);
       return termos.every((t) => {
@@ -292,8 +316,42 @@ export function DashboardClient({
         return tSimples.length > 0 && alvoSimples.includes(tSimples);
       });
     });
-  }, [reports, buscaNormalizada]);
+  }, [relatoriosDaPasta, buscaNormalizada]);
   const buscando = buscaNormalizada.length > 0;
+
+  /** Finaliza (ou devolve para rascunho) sem precisar abrir o relatório.
+   *  A lista se ajeita na hora: ao finalizar, o cartão sai da pasta Rascunho. */
+  const alternarStatus = async (r: Report) => {
+    if (mudandoStatus === r.id) return;
+    const novo = r.status === "finalizado" ? "rascunho" : "finalizado";
+    setMudandoStatus(r.id);
+    setReports((rs) =>
+      rs.map((x) => (x.id === r.id ? { ...x, status: novo } : x)),
+    );
+    try {
+      const res = await fetch(`/api/reports/${r.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: novo }),
+      });
+      if (!res.ok) throw new Error("falha ao salvar");
+      setAviso(
+        novo === "finalizado"
+          ? `${r.titulo} — finalizado (foi para a pasta Finalizados)`
+          : `${r.titulo} — de volta para rascunho`,
+      );
+      setTimeout(() => setAviso(null), 5000);
+      router.refresh();
+    } catch {
+      setReports((rs) =>
+        rs.map((x) => (x.id === r.id ? { ...x, status: r.status } : x)),
+      );
+      setAviso("Não foi possível mudar a situação — tente de novo");
+      setTimeout(() => setAviso(null), 5000);
+    } finally {
+      setMudandoStatus(null);
+    }
+  };
 
   const inputCls =
     "w-full rounded-lg border border-line bg-cream px-3 py-2 text-[13px] text-ink outline-none transition-all placeholder:text-ink/35 focus:border-pine focus:ring-2 focus:ring-pine/15";
@@ -421,6 +479,78 @@ export function DashboardClient({
                 </span>
               </div>
 
+              {/* ===== Pastas: Rascunho / Finalizados / Mostrar todos ===== */}
+              {reports.length > 0 && (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  {(
+                    [
+                      {
+                        chave: "rascunho" as const,
+                        rotulo: "Rascunho",
+                        n: rascunhos,
+                        Icone: FolderOpen,
+                      },
+                      {
+                        chave: "finalizados" as const,
+                        rotulo: "Finalizados",
+                        n: finalizados,
+                        Icone: Folder,
+                      },
+                    ]
+                  ).map(({ chave, rotulo, n, Icone }) => {
+                    const ativa = pasta === chave;
+                    return (
+                      <button
+                        key={chave}
+                        type="button"
+                        onClick={() => setPasta(chave)}
+                        aria-pressed={ativa}
+                        title={
+                          chave === "rascunho"
+                            ? "Pasta com os relatórios em rascunho"
+                            : "Pasta com os relatórios já finalizados"
+                        }
+                        className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[13px] font-semibold transition-all active:scale-[0.98] ${
+                          ativa
+                            ? "border-pine bg-pine text-white shadow-sm"
+                            : "border-line bg-white/70 text-ink hover:border-pine/40 hover:bg-white"
+                        }`}
+                      >
+                        <Icone className="h-4 w-4" />
+                        {rotulo}
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                            ativa
+                              ? "bg-white/20 text-white"
+                              : "bg-ink/[0.07] text-ink-soft"
+                          }`}
+                        >
+                          {n}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setPasta("todos")}
+                    aria-pressed={pasta === "todos"}
+                    title="Mostrar rascunhos e finalizados na mesma lista"
+                    className={`ml-auto flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[13px] font-semibold transition-all active:scale-[0.98] ${
+                      pasta === "todos"
+                        ? "border-ink bg-ink text-cream shadow-sm"
+                        : "border-line bg-white/70 text-ink-soft hover:border-ink/30 hover:bg-white hover:text-ink"
+                    }`}
+                  >
+                    {pasta === "todos" ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <ListChecks className="h-4 w-4" />
+                    )}
+                    Mostrar todos
+                  </button>
+                </div>
+              )}
+
               {/* ===== Pesquisa ===== */}
               {reports.length > 0 && (
                 <div className="mb-4">
@@ -457,12 +587,16 @@ export function DashboardClient({
                         <strong className="font-bold text-ink">
                           {relatoriosFiltrados.length}
                         </strong>{" "}
-                        de {reports.length} relatório
-                        {reports.length === 1 ? "" : "s"} para “{busca.trim()}”
+                        de {relatoriosDaPasta.length} {pastaNome} para “
+                        {busca.trim()}”
                       </>
                     ) : (
                       <>
-                        Busque por Nº da PCDP, nome do beneficiário, OM,
+                        Mostrando{" "}
+                        <strong className="font-bold text-ink">
+                          {relatoriosDaPasta.length}
+                        </strong>{" "}
+                        {pastaNome} · pesquise por Nº da PCDP, nome, OM,
                         itinerário, evento, CPF ou BI.
                       </>
                     )}
@@ -488,6 +622,46 @@ export function DashboardClient({
                   >
                     <Wand2 className="h-4 w-4" />
                     Criar exemplo
+                  </button>
+                </div>
+              ) : relatoriosDaPasta.length === 0 ? (
+                <div className="flex flex-col items-center rounded-3xl border border-dashed border-ink/25 bg-white/50 px-6 py-14 text-center">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-pine/[0.08] text-pine">
+                    {pasta === "finalizados" ? (
+                      <Folder className="h-7 w-7" strokeWidth={1.6} />
+                    ) : (
+                      <FolderOpen className="h-7 w-7" strokeWidth={1.6} />
+                    )}
+                  </span>
+                  <h3 className="font-display mt-4 text-lg font-semibold">
+                    {pasta === "finalizados"
+                      ? "Pasta Finalizados vazia"
+                      : "Nenhum relatório em rascunho"}
+                  </h3>
+                  <p className="mt-1 max-w-[360px] text-[13px] leading-relaxed text-ink-soft">
+                    {pasta === "finalizados"
+                      ? "Assim que você finalizar um relatório (pelo botão “Finalizar” na lista), ele sai da tela inicial e aparece aqui."
+                      : "Tudo o que estava em rascunho já foi finalizado. Veja a pasta Finalizados ou comece um relatório novo."}
+                  </p>
+                  <button
+                    onClick={() =>
+                      pasta === "finalizados"
+                        ? setPasta("rascunho")
+                        : void criar(false)
+                    }
+                    className="mt-5 flex items-center gap-2 rounded-full bg-pine px-5 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-pine-deep active:scale-[0.98]"
+                  >
+                    {pasta === "finalizados" ? (
+                      <>
+                        <FolderOpen className="h-4 w-4" />
+                        Ver rascunhos
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4" />
+                        Novo relatório
+                      </>
+                    )}
                   </button>
                 </div>
               ) : relatoriosFiltrados.length === 0 ? (
@@ -580,6 +754,31 @@ export function DashboardClient({
                           Abrir editor
                           <ArrowRight className="h-3.5 w-3.5" />
                         </Link>
+                        <button
+                          onClick={() => void alternarStatus(r)}
+                          disabled={mudandoStatus === r.id}
+                          title={
+                            r.status === "finalizado"
+                              ? "Devolver este relatório para a pasta Rascunho"
+                              : "Finalizar: o relatório sai da tela inicial e vai para a pasta Finalizados"
+                          }
+                          className={`ml-1 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition-colors active:scale-[0.98] disabled:opacity-60 ${
+                            r.status === "finalizado"
+                              ? "border-[#c9a45c]/40 bg-[#c9a45c]/10 text-[#8a6210] hover:bg-[#c9a45c]/20"
+                              : "border-pine/35 bg-pine/[0.07] text-pine hover:bg-pine/[0.14]"
+                          }`}
+                        >
+                          {mudandoStatus === r.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : r.status === "finalizado" ? (
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          ) : (
+                            <BadgeCheck className="h-3.5 w-3.5" />
+                          )}
+                          {r.status === "finalizado"
+                            ? "Voltar a rascunho"
+                            : "Finalizar"}
+                        </button>
                         <div className="ml-auto flex items-center gap-1">
                           <a
                             href={`/relatorios/${r.id}/imprimir`}
