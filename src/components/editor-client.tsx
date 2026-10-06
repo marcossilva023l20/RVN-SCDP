@@ -52,6 +52,7 @@ import {
   FileCheck2,
   FileText,
   Landmark,
+  Loader2,
   MapPin,
   PenLine,
   Plane,
@@ -263,6 +264,7 @@ export function EditorClient({
     "saved",
   );
   const [showPreviewMobile, setShowPreviewMobile] = useState(false);
+  const [criandoNovo, setCriandoNovo] = useState(false);
   const lastSavedJson = useRef(JSON.stringify(initial));
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -352,6 +354,30 @@ export function EditorClient({
     const data = (await res.json()) as { id: number };
     router.push(`/relatorios/${data.id}`);
     router.refresh();
+  };
+
+  /** "Novo": salva o atual, cria um relatório em branco (já com os dados do
+   *  perfil e os padrões do 3º BEC) e abre direto no editor dele. */
+  const criarNovo = async () => {
+    if (criandoNovo) return;
+    setCriandoNovo(true);
+    try {
+      await doSave(draft);
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = (await res.json()) as { id?: number };
+      if (data?.id) {
+        router.push(`/relatorios/${data.id}`);
+        router.refresh();
+      } else {
+        setCriandoNovo(false);
+      }
+    } catch {
+      setCriandoNovo(false);
+    }
   };
 
   const gerarExtenso = () => {
@@ -637,6 +663,21 @@ export function EditorClient({
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-[#9db3a5] transition-colors hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-300"
             >
               <Trash2 className="h-4 w-4" />
+            </button>
+            {/* Novo relatório: salva o que está na tela e já abre um
+                relatório em branco, pronto para preencher. */}
+            <button
+              onClick={() => void criarNovo()}
+              disabled={criandoNovo}
+              title="Criar um novo relatório em branco (salva este antes)"
+              className="flex items-center gap-2 rounded-lg border border-[#c9a45c]/45 bg-[#c9a45c]/10 px-3.5 py-2 text-[12.5px] font-bold text-[#e9d3a3] transition-colors hover:bg-[#c9a45c]/20 active:scale-[0.98] disabled:opacity-60"
+            >
+              {criandoNovo ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">Novo</span>
             </button>
             {/* Declaração de Extravio: só aparece quando a seção 9
                 (canhotos/cartões de embarque utilizados) está preenchida —
