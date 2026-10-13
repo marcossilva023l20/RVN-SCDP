@@ -88,8 +88,17 @@ const DATA = "[0-9]{2}/[0-9]{2}/[0-9]{4}";
  *   ("LTDA", "SOARES", "AGENCIA") quebram a sequência — sem isso o regex
  *   "engolia" tudo até o parêntese da cidade.
  */
+/**
+ * Numeral romano dentro do nome da cidade ("Pedro II (PI)", "Três Corações
+ * III (MG)"…). Sem isso, a regra que corta palavras em CAIXA ALTA (LTDA,
+ * SOARES, AGENCIA) também cortava o "II" e a cidade deixava de ser lida.
+ * O padrão só aceita romano de verdade (com 2+ caracteres) para não confundir
+ * com siglas.
+ */
+const ROMANO_CIDADE =
+  "(?<![\\p{L}])(?=[IVXLCDM]{2,}(?![\\p{L}]))M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})(?![\\p{L}])";
 const PALAVRA_CIDADE =
-  "(?<![\\p{L}])(?![A-ZÀ-Þ]{2})(?![\\p{L}\\p{N}.'/-]*\\d{5})[A-ZÀ-Þ][\\p{L}\\p{N}.'/-]*";
+  `(?:(?<![\\p{L}])(?![A-ZÀ-Þ]{2})(?![\\p{L}\\p{N}.'/-]*\\d{5})[A-ZÀ-Þ][\\p{L}\\p{N}.'/-]*|${ROMANO_CIDADE})`;
 const CONECTOR_CIDADE = "(?<![\\p{L}])[a-zà-ÿ]{1,4}";
 const CIDADE = `((?:${PALAVRA_CIDADE})(?:\\s+(?:${PALAVRA_CIDADE}|${CONECTOR_CIDADE})){0,6}\\s*\\(\\s*[A-Z]{2}\\s*\\))`;
 
@@ -226,18 +235,27 @@ export function parseScdp(bruto: string): ScdpImport {
   // O tipo é qualquer palavra (Trecho, Trânsito, Permanência, Retorno…) e a
   // célula seguinte é o "Transporte", que termina em "---", num
   // "dd/mm/aaaa hh:mm" ou na próxima linha do roteiro.
+  // As células vêm separadas por espaço/tabulação, mas algumas cópias do SCDP
+  // colam tudo ("Picos (PI)Pedro II (PI)22/09/2026 a 22/09/2026TrechoVeículo
+  // Oficial---"): por isso os separadores aceitam zero espaço quando o campo
+  // seguinte tem começo inconfundível (cidade com (UF), data ou "---").
   const reRoteiro = new RegExp(
-    `${CIDADE}\\s+` + // origem
-      `${CIDADE}\\s+` + // destino
-      `(${DATA})\\s+[aA]\\s+(${DATA})\\s+` + // permanência do trecho
-      "([\\p{L}]+)\\s+" + // tipo
-      `([\\s\\S]*?)(?=\\s+-{2,}|\\s+${DATA}\\s+[0-9]{1,2}:[0-9]{2}|\\s+\\d{1,3}\\s+${CIDADE}|$)`,
+    `${CIDADE}\\s*` + // origem
+      `${CIDADE}\\s*` + // destino
+      `(${DATA})\\s*[aA]\\s*(${DATA})\\s*` + // permanência do trecho
+      // Tipo do trecho: quando a cópia vem com as células coladas
+      // ("TrechoVeículo Oficial"), o vocabulário conhecido separa o tipo da
+      // coluna "Transporte"; qualquer outra palavra continua valendo.
+      "(?:([Tt]recho|Tr[âa]nsito|[Pp]erman[êe]ncia|[Rr]etorno|[Ee]stada|[Ii]da|[Vv]olta)" +
+      "|([\\p{L}]+))\\s*" +
+      `([\\s\\S]*?)(?=\\s*-{2,}|\\s+${DATA}\\s+[0-9]{1,2}:[0-9]{2}|\\s*\\d{1,3}\\s*${CIDADE}|$)`,
     "gu",
   );
   /** Valores da coluna "Transporte" de cada linha do roteiro. */
   const transportes: string[] = [];
   for (const m of t.matchAll(reRoteiro)) {
-    const [, origemRaw, destinoRaw, d1, d2, tipo, transporteRaw] = m;
+    const [, origemRaw, destinoRaw, d1, d2, tipoConhecido, tipoGenerico, transporteRaw] = m;
+    const tipo = tipoConhecido || tipoGenerico || "";
     const origem = limpaCidade(origemRaw);
     const destino = limpaCidade(destinoRaw);
     const transporte = (transporteRaw ?? "").replace(/\s+/g, " ").trim();
@@ -354,7 +372,7 @@ export function parseScdp(bruto: string): ScdpImport {
       origem: string;
       destino: string;
     }> = [];
-    const rePar = new RegExp(`${CIDADE}\\s+${CIDADE}`, "gu");
+    const rePar = new RegExp(`${CIDADE}\\s*${CIDADE}`, "gu");
     for (const m of bloco.matchAll(rePar)) {
       const i = m.index ?? 0;
       pares.push({
