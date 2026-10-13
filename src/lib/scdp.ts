@@ -609,7 +609,7 @@ export function parseScdp(bruto: string): ScdpImport {
   // Reunião de Colegiados, Lei ou Decreto, Portaria, Auxílios…) — isso não
   // faz parte da descrição do evento.
   const mDesc = t.match(
-    /Descri[çc][ãa]o do Motivo da Viagem:\s*\n?\s*([\s\S]*?)(?=(?:BILHETES DA PCDP|BILHETES A PRESTAR CONTAS|\* Clique em um trecho|C[óo]digo da Reserva|Companhia de Transporte|N[úu]mero do Bilhete|Data do Processamento|Tarifa de Embarque|Ag[êe]ncia de Viagem|Situa[çc][ãa]o do Trajeto|Cidade de Origem|Cidade de Destino)|\n\s*(?:ROTEIRO DA VIAGEM|QUADRO DE TOTALIZA|CONFIRMA[ÇC][ÃA]O DA VIAGEM|COMPLEMENTO|RESUMO|DADOS DO PROPOSTO|DADOS ATUALIZADOS|DETALHES DO PROPOSTO|DADOS N[OA] VIAGEM|DADOS DA VIAGEM|REUNI[ÃA]O DE COLEGIADOS|LEI OU DECRETO|PORTARIA|AUX[ÍI]LIO-ALIMENTA|AUX[ÍI]LIO-TRANSPORTE)|$)/i,
+    /Descri[çc][ãa]o do Motivo da Viagem:\s*\n?\s*([\s\S]*?)(?=(?:BILHETES DA PCDP|BILHETES A PRESTAR CONTAS|\* Clique em um trecho|C[óo]digo da Reserva|Companhia de Transporte|N[úu]mero do Bilhete|Data do Processamento|Tarifa de Embarque|Ag[êe]ncia de Viagem|Situa[çc][ãa]o do Trajeto|Cidade de Origem|Cidade de Destino)|\n\s*(?:ROTEIRO DA VIAGEM|QUADRO DE TOTALIZA|CONFIRMA[ÇC][ÃA]O DA VIAGEM|COMPLEMENTO|RESUMO|DADOS DO PROPOSTO|DADOS ATUALIZADOS|DETALHES DO PROPOSTO|DADOS N[OA] VIAGEM|DADOS DA VIAGEM|REUNI[ÃA]O DE COLEGIADOS|LEI OU DECRETO|PORTARIA|AUX[ÍI]LIO-ALIMENTA|AUX[ÍI]LIO-TRANSPORTE|ANEXOS? DA VIAGEM|DEMONSTRATIVO DA SOLICITA[ÇC][ÃA]O DE VIAGEM)|$)/i,
   );
   if (mDesc) {
     // Mesmo sem quebra de linha antes, tira do fim os rótulos/abas que o SCDP
@@ -618,6 +618,24 @@ export function parseScdp(bruto: string): ScdpImport {
     const ROTULOS_FIM =
       /(?:\s*(?:Detalhes do Proposto|Dados n[oa] Viagem|Dados d[ao] Viagem|Dados do Proposto|Confirma[çc][ãa]o da viagem|Complemento|Resumo))+$/i;
     let desc = mDesc[1].replace(/\s*\n+\s*/g, " ").trim();
+    // A tabela "Anexos da Viagem" (título, cabeçalho e linhas) pode vir colada
+    // no fim da descrição — inclusive sem quebra de linha, quando a seleção
+    // passa da caixa de texto:
+    //   "…Operações. Anexos da Viagem Nome do Documento Tipo do Documento
+    //    Usuário Data Inclusão Observações Válido? Visível no App? Abrir
+    //    1 Boletim Interno Outros PEDRO … 22/09/2026 15:03 --- Sim Não …"
+    // Só corta quando a cauda tem mesmo cara de tabela (3+ marcas de coluna),
+    // para não truncar uma frase legítima que cite "os anexos da viagem".
+    const MARCA_ANEXO =
+      /(?:Anexos da Viagem|Anexo da Viagem|Nome do Documento|Tipo do Documento|Data Inclus[ãa]o|Observa[çc][õo]es|V[áa]lido\?|Vis[íi]vel no App\?|Usu[áa]rio|Abrir)/gi;
+    const mCauda = desc.match(
+      /\s*(?:Anexos da Viagem|Anexo da Viagem|Nome do Documento|Demonstrativo da Solicita[çc][ãa]o de Viagem)/i,
+    );
+    if (mCauda?.index !== undefined) {
+      const cauda = desc.slice(mCauda.index);
+      const marcas = (cauda.match(MARCA_ANEXO) ?? []).length;
+      if (marcas >= 3) desc = desc.slice(0, mCauda.index).trim();
+    }
     let antes = "";
     while (desc !== antes) {
       antes = desc;
