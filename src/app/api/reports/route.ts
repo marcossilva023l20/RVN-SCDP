@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
     "eventoInicio",
     "eventoTermino",
     "eventoDescricao",
+    "biAutorizacao",
     "acrescimoSituacao",
     "diariasDias",
     "diariasValor",
