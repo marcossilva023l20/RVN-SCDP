@@ -45,6 +45,7 @@ export interface ScdpImport {
   eventoInicio?: string;
   eventoTermino?: string;
   eventoDescricao?: string;
+  biAutorizacao?: string;
   acrescimoSituacao?: string;
   diariasDias?: string;
   diariasValor?: string;
@@ -70,6 +71,7 @@ export const CHAVES_IMPORT_SCDP = [
   "eventoInicio",
   "eventoTermino",
   "eventoDescricao",
+  "biAutorizacao",
   "acrescimoSituacao",
   "diariasDias",
   "diariasValor",
@@ -634,7 +636,24 @@ export function parseScdp(bruto: string): ScdpImport {
     if (mCauda?.index !== undefined) {
       const cauda = desc.slice(mCauda.index);
       const marcas = (cauda.match(MARCA_ANEXO) ?? []).length;
-      if (marcas >= 3) desc = desc.slice(0, mCauda.index).trim();
+      if (marcas >= 3) {
+        // Antes de cortar, tenta extrair a BI que publicou a autorização
+        // presente na tabela "Anexos da Viagem" (ex.: "BI Nº 199 de 21 OUT 26,
+        // do 3º BEC"). Esse campo não é a descrição, mas fica colado junto
+        // quando a seleção passa da caixa de texto.
+        if (!out.biAutorizacao) {
+          const reBi =
+            /(?:ADT\s+)?BI\s+Nº\s*\d{1,4}[^\n,]*?(?:(?:de\s+[0-9A-Za-zñÑ]{3,9}\s+[0-9]{2}\s+[0-9]{2}(?:\s*[0-9]{2})?|de\s+[0-9]{1,2}\s*[/ ]\s*[0-9]{1,2}\s*[/ ]\s*[0-9]{2,4})[^\n,]*?)?(?:,\s*do\s+.+?BEC|BEC)/i;
+          const mBi = cauda.match(reBi);
+          if (mBi) {
+            let bi = mBi[0].replace(/\s+/g, " ").trim();
+            // Normaliza datas por extenso em militar quando possível.
+            // "21 OUT 26" -> deixa como está; o editor mostra o valor exato.
+            if (bi) out.biAutorizacao = bi;
+          }
+        }
+        desc = desc.slice(0, mCauda.index).trim();
+      }
     }
     let antes = "";
     while (desc !== antes) {
